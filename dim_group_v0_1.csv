@@ -1,0 +1,8 @@
+﻿group_id,group_name,description
+G001,Five-country pilot,All five countries in pilot
+G002,Europe,"France, Belgium, United Kingdom"
+G003,North America,"United States, Canada"
+G004,Francophone,France plus partially francophone Belgium and Canada
+G005,Anglosphere,"United Kingdom, United States, Canada"
+G006,European Union (pilot members),"France, Belgium"
+G007,France + Belgium,Two core francophone European cases
