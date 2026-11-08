@@ -45,3 +45,7 @@ Raw downloads are never edited in place. A downloaded artifact is identified by 
 ## Scaling path
 
 Do not add Kafka, OpenSearch or ClickHouse until a measured bottleneck requires them. DuckDB + partitioned Parquet should be the first bulk-analysis layer.
+
+## Local execution model
+
+Python tooling runs on the host through `mise` + `uv`. PostgreSQL is containerized through Docker Compose or Podman Compose. This keeps the Python development loop native while preserving a reproducible database service.

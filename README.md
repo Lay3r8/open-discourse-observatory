@@ -14,19 +14,22 @@ The initial pilot covers France, Belgium, the United Kingdom, the United States 
 
 - PostgreSQL 18 for the canonical research database and Power BI serving layer.
 - DuckDB + Parquet for large local analytical datasets.
-- Python 3.13 for ingestion, normalization and validation tooling.
-- Docker Compose for local reproducibility.
+- Python 3.13 pinned by `mise`; `uv` manages the project environment and dependencies.
+- PostgreSQL runs through a Compose-compatible container engine (Docker Compose or Podman Compose).
 - Power BI connects to the `analytics` schema.
 
 ## Quick start
 
+The project is designed for `mise + uv` locally. PostgreSQL is the only service that needs a container engine.
+
 ```bash
-cp .env.example .env
-make up
-make migrate
-make import-pilot
-make db-check
+make doctor
+make bootstrap
 ```
+
+`make bootstrap` runs `mise install`, `uv sync --extra dev`, creates `.env` from `.env.example` when missing, starts PostgreSQL, applies migrations, imports the pilot, and prints row counts.
+
+If `make doctor` reports no Compose engine, install Docker Compose or Podman with a Compose provider, then rerun `make bootstrap`.
 
 Optional Adminer UI:
 
@@ -60,16 +63,19 @@ Open `http://localhost:8080` and connect to host `postgres` using the values fro
 ## Core commands
 
 ```bash
-make up                 # start PostgreSQL + ETL container
+make doctor             # check mise, uv, Python and container engine
+make setup              # mise install + uv sync + create .env if missing
+make bootstrap          # one-shot local bootstrap
+make up                 # start PostgreSQL
 make down               # stop containers
 make adminer            # start optional Adminer profile
-make migrate            # apply SQL migrations
-make import-pilot       # import pilot CSV files into research schema
+make migrate            # apply SQL migrations via uv
+make import-pilot       # import pilot CSV files via uv
 make gdelt-sample       # parse the bundled GDELT sample into bronze Parquet
-make test               # run unit tests
-make lint               # ruff checks
-make format             # ruff format
-make db-check           # show canonical row counts
+make test               # run unit tests via uv
+make lint               # ruff checks via uv
+make format             # ruff format via uv
+make db-check           # show canonical row counts via uv
 ```
 
 ## Scientific integrity rules

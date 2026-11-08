@@ -15,7 +15,7 @@ class Settings:
         return cls(
             database_url=os.getenv(
                 "DATABASE_URL",
-                "postgresql://discourse:change-me-local-only@postgres:5432/discourse",
+                "postgresql://discourse:change-me-local-only@localhost:5432/discourse",
             ),
-            data_dir=Path(os.getenv("ODO_DATA_DIR", "/app/data")),
+            data_dir=Path(os.getenv("ODO_DATA_DIR", "./data")),
         )

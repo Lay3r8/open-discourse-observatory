@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from odo.config import Settings
+from odo.db import connection
 from odo.gdelt import download_export, extract_zip, to_parquet
 from odo.import_pilot import import_pilot
 from odo.migrations import migrate
@@ -15,6 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("migrate")
     sub.add_parser("import-pilot")
+    sub.add_parser("db-check")
 
     gdelt_download = sub.add_parser("gdelt-download")
     gdelt_download.add_argument("timestamp", help="GDELT v2 timestamp, e.g. 20260101000000")
@@ -39,6 +41,14 @@ def main(argv: list[str] | None = None) -> int:
         reference_dir = settings.data_dir / "reference" / "pilot-v0.1"
         counts = import_pilot(reference_dir)
         print(counts)
+        return 0
+
+    if args.command == "db-check":
+        with connection(settings) as conn:
+            incidents = conn.execute("select count(*) from research.incident").fetchone()[0]
+            sources = conn.execute("select count(*) from research.source").fetchone()[0]
+            coding = conn.execute("select count(*) from research.coding_decision").fetchone()[0]
+        print(f"incidents={incidents} sources={sources} coding_decisions={coding}")
         return 0
 
     if args.command == "gdelt-download":

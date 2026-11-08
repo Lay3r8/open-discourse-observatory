@@ -1,46 +1,56 @@
 SHELL := /bin/sh
-DC ?= docker compose
+COMPOSE ?= ./scripts/compose.sh
+UV ?= uv
+MISE ?= mise
+UVRUN ?= ./scripts/uv-run.sh
 
-.PHONY: up down adminer build shell migrate import-pilot gdelt-sample test lint format db-check reset-db
+.PHONY: setup doctor bootstrap up down adminer migrate import-pilot gdelt-sample test lint format db-check reset-db
+
+setup:
+	command -v $(MISE) >/dev/null 2>&1 || { echo "mise is required"; exit 127; }
+	command -v $(UV) >/dev/null 2>&1 || { echo "uv is required"; exit 127; }
+	$(MISE) install
+	$(MISE) exec -- $(UV) sync --extra dev
+	test -f .env || cp .env.example .env
+
+doctor:
+	./scripts/doctor.sh
+
+bootstrap: setup up migrate import-pilot db-check
 
 up:
-	$(DC) up -d --build postgres etl
+	$(COMPOSE) up -d postgres
 
 down:
-	$(DC) down
+	$(COMPOSE) down
 
 adminer:
-	$(DC) --profile tools up -d adminer
-
-build:
-	$(DC) build etl
-
-shell:
-	$(DC) exec etl sh
+	$(COMPOSE) --profile tools up -d adminer
 
 migrate:
-	$(DC) exec etl python -m odo.cli migrate
+	$(UVRUN) python -m odo.cli migrate
 
 import-pilot:
-	$(DC) exec etl python -m odo.cli import-pilot
+	$(UVRUN) python -m odo.cli import-pilot
 
 gdelt-sample:
-	$(DC) exec etl python -m odo.cli gdelt-file tests/fixtures/gdelt_sample.tsv --timestamp 20260101000000
+	$(UVRUN) python -m odo.cli gdelt-file tests/fixtures/gdelt_sample.tsv --timestamp 20260101000000
 
 test:
-	$(DC) exec etl pytest -q
+	$(UVRUN) pytest -q
 
 lint:
-	$(DC) exec etl ruff check src tests
+	$(UVRUN) ruff check src tests
 
 format:
-	$(DC) exec etl ruff format src tests
+	$(UVRUN) ruff format src tests
 
 db-check:
-	$(DC) exec postgres psql -U $${POSTGRES_USER:-discourse} -d $${POSTGRES_DB:-discourse} -c "select (select count(*) from research.incident) incidents, (select count(*) from research.source) sources, (select count(*) from research.coding_decision) coding_decisions;"
+	$(UVRUN) python -m odo.cli db-check
 
 reset-db:
-	$(DC) down -v
+	$(COMPOSE) down -v
 	$(MAKE) up
 	$(MAKE) migrate
 	$(MAKE) import-pilot
+	$(MAKE) db-check

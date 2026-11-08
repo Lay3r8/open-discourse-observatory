@@ -15,13 +15,15 @@
 
 ## Development
 
-- Python 3.13.
+- Python 3.13, pinned by `mise.toml`.
+- `uv` manages the local virtual environment and dependency installation.
 - PostgreSQL 18.
 - DuckDB and Parquet for bulk analytics.
 - Polars for dataframe transformations where useful.
 - `psycopg` for PostgreSQL access.
 - `pytest` for tests.
 - `ruff` for linting/formatting.
+- Prefer host-side Python commands through `uv run`; containers are for PostgreSQL and optional tooling.
 - Database changes require a numbered SQL migration.
 - Keep migrations forward-only and deterministic.
 - Use UTC timestamps for ingestion metadata.
