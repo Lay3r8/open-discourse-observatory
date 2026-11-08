@@ -21,7 +21,7 @@ The query reads one day at a time and selects title/URL plus GKG themes, persons
 
 ## Current benchmark
 
-The manual 2025-01-01 calibration produced 441 candidate rows and 305 unique normalized titles before semantic filtering. These are calibration figures, not research results.
+The manual 2025-01-01 calibration produced 441 candidate rows and 305 unique raw titles before semantic filtering. These are calibration figures, not research results.\n\nThe first automated `v1` lexicon batch produced only the 129 French matches because the English/Dutch TOML word-boundary patterns were double-escaped. That batch is intentionally preserved for audit. Lexicon `v2` corrects the escaping and is the current discovery lexicon.
 
 ## Commands
 
@@ -54,3 +54,8 @@ data/bronze/gdelt/gkg/query_version=v1/lexicon_version=v1/date=YYYY-MM-DD/
 Raw Parquet contains the selected BigQuery rows. Bronze Parquet adds decoded/normalized titles, canonical URLs and stable hashes used for later clustering.
 
 The next analysis stage is semantic relevance and event clustering; it must not introduce left/right labels into discovery.
+
+
+## Versioned batch membership
+
+A normalized candidate document can appear in more than one discovery batch as query or lexicon versions evolve. `staging.candidate_document` stores the document once (with first-seen metadata), while `staging.discovery_batch_document` stores batch-specific classification such as `sample_kind` and `matched_token`. This prevents a rerun from overwriting the audit history of an earlier batch.

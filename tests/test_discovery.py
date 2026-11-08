@@ -1,6 +1,6 @@
 from datetime import date
 
-from odo.discovery import _frame, canonicalize_url, normalize_title
+from odo.discovery import _frame, _load_lexicon, canonicalize_url, normalize_title
 
 
 def test_normalize_title_decodes_html_and_unicode():
@@ -38,3 +38,14 @@ def test_frame_infers_nullable_string_beyond_default_sample():
 
     assert frame.height == 151
     assert frame["matched_token"][-1] == "annul"
+
+
+
+def test_current_lexicon_uses_real_word_boundaries():
+    lexicon = _load_lexicon()
+
+    assert lexicon["version"] == "v2"
+    assert lexicon["english"].startswith(r"\b(")
+    assert lexicon["dutch"].startswith(r"\b(")
+    assert r"\\b" not in lexicon["english"]
+    assert r"\\b" not in lexicon["dutch"]

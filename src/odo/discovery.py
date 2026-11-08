@@ -23,7 +23,7 @@ QUERY_VERSION = "v1"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DISCOVERY_ROOT = PROJECT_ROOT / "research" / "discovery" / QUERY_VERSION
 SQL_PATH = DISCOVERY_ROOT / "gkg_candidates.sql"
-LEXICON_PATH = DISCOVERY_ROOT / "lexicon.toml"
+LEXICON_PATH = DISCOVERY_ROOT / "lexicon-v2.toml"
 
 TRACKING_QUERY_KEYS = {
     "fbclid",
@@ -374,22 +374,19 @@ def _persist_staging(
 
         sql = """
             insert into staging.candidate_document(
-                candidate_document_id, batch_id, discovery_date, gdelt_date,
+                candidate_document_id, first_batch_id, discovery_date, gdelt_date,
                 source_common_name, source_language, title, normalized_title,
-                title_sha256, source_url, canonical_url, url_sha256, sample_kind,
-                matched_token, metadata
+                title_sha256, source_url, canonical_url, url_sha256, first_sample_kind,
+                first_matched_token, metadata
             ) values (
                 %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb
             )
             on conflict (candidate_document_id) do update set
-                batch_id=excluded.batch_id,
                 title=excluded.title,
                 normalized_title=excluded.normalized_title,
                 title_sha256=excluded.title_sha256,
                 canonical_url=excluded.canonical_url,
                 url_sha256=excluded.url_sha256,
-                sample_kind=excluded.sample_kind,
-                matched_token=excluded.matched_token,
                 metadata=excluded.metadata
         """
         values = []
@@ -423,8 +420,27 @@ def _persist_staging(
                 )
             )
 
+        membership_sql = """
+            insert into staging.discovery_batch_document(
+                batch_id, candidate_document_id, sample_kind, matched_token
+            ) values (%s,%s,%s,%s)
+            on conflict (batch_id, candidate_document_id) do update set
+                sample_kind=excluded.sample_kind,
+                matched_token=excluded.matched_token
+        """
+        memberships = [
+            (
+                manifest["batch_id"],
+                row["candidate_document_id"],
+                row["sample_kind"],
+                row["matched_token"],
+            )
+            for row in bronze_rows
+        ]
+
         with conn.cursor() as cur:
             cur.executemany(sql, values)
+            cur.executemany(membership_sql, memberships)
 
 
 def _load_existing_batch(

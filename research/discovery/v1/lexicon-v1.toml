@@ -1,6 +1,6 @@
 [metadata]
 version = "v1"
-description = "High-recall, ideology-neutral action lexicon for GDELT title discovery."
+description = "Historical discovery lexicon. English/Dutch word boundaries were accidentally double-escaped."
 
 [english]
 pattern = '\\b(cancelled|canceled|banned|disinvited|deplatformed|withdrawn|fired|dismissed|suspended|boycott|boycotted|threatened|attacked|disrupted|blocked|censored)\\b'

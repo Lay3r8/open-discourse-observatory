@@ -24,3 +24,14 @@ def test_discovery_migration_defines_ai_staging_boundary():
     assert "staging.candidate_document" in migration
     assert "staging.ai_analysis" in migration
     assert "analytics.discovery_batches" in migration
+
+
+
+def test_discovery_membership_migration_preserves_batch_history():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "004_discovery_membership.sql"
+    ).read_text()
+    assert "staging.discovery_batch_document" in migration
+    assert "first_batch_id" in migration
+    assert "first_sample_kind" in migration
+    assert "first_matched_token" in migration
