@@ -1,9 +1,14 @@
+from dataclasses import replace
 from datetime import UTC, date, datetime
 
+import pytest
+
 from odo.review import (
+    REVIEW_SCHEMA_VERSION,
     ReviewItem,
     _largest_remainder_allocation,
     _select_stratified_prefix,
+    derive_relevance,
     previous_reviewed_item,
 )
 
@@ -18,13 +23,56 @@ def _item(index: int, kind: str, language: str) -> ReviewItem:
         canonical_url=f"https://example.com/{index}",
         sample_kind=kind,
         language_bucket=language,
+        coercion_assessment=None,
+        expressive_scope_assessment=None,
         human_relevance=None,
         reason_code=None,
         evidence_text=None,
         notes=None,
+        review_schema_version=None,
         reviewer_id=None,
         reviewed_at=None,
     )
+
+
+def _reviewed(
+    item: ReviewItem,
+    *,
+    coercion: str,
+    scope: str,
+    relevance: str,
+    reviewed_at: datetime,
+) -> ReviewItem:
+    return replace(
+        item,
+        coercion_assessment=coercion,
+        expressive_scope_assessment=scope,
+        human_relevance=relevance,
+        review_schema_version=REVIEW_SCHEMA_VERSION,
+        reviewer_id="simon",
+        reviewed_at=reviewed_at,
+    )
+
+
+@pytest.mark.parametrize(
+    ("coercion", "scope", "expected"),
+    [
+        ("no", "not_applicable", "not_relevant"),
+        ("uncertain", "not_applicable", "uncertain"),
+        ("yes", "yes", "relevant"),
+        ("yes", "no", "not_relevant"),
+        ("yes", "uncertain", "uncertain"),
+    ],
+)
+def test_derive_relevance(coercion, scope, expected):
+    assert derive_relevance(coercion, scope) == expected
+
+
+def test_derive_relevance_rejects_invalid_combinations():
+    with pytest.raises(ValueError):
+        derive_relevance("no", "yes")
+    with pytest.raises(ValueError):
+        derive_relevance("yes", "not_applicable")
 
 
 def test_largest_remainder_allocation_hits_target():
@@ -58,27 +106,38 @@ def test_review_prefix_preserves_candidate_negative_mix_and_is_deterministic():
     assert {x.language_bucket for x in first} == {"eng_or_unknown", "fra", "nld"}
 
 
+def test_legacy_label_is_not_current_review():
+    item = replace(
+        _item(1, "candidate", "eng_or_unknown"),
+        human_relevance="uncertain",
+        reviewer_id="simon",
+        reviewed_at=datetime(2025, 1, 1, tzinfo=UTC),
+    )
+    assert item.is_current_review is False
 
-def test_previous_reviewed_item_walks_back_through_history():
-    newest = _item(1, "candidate", "eng_or_unknown")
-    middle = _item(2, "candidate", "eng_or_unknown")
-    oldest = _item(3, "candidate", "eng_or_unknown")
 
-    newest = ReviewItem(**{
-        **newest.__dict__,
-        "human_relevance": "uncertain",
-        "reviewed_at": datetime(2025, 1, 3, tzinfo=UTC),
-    })
-    middle = ReviewItem(**{
-        **middle.__dict__,
-        "human_relevance": "relevant",
-        "reviewed_at": datetime(2025, 1, 2, tzinfo=UTC),
-    })
-    oldest = ReviewItem(**{
-        **oldest.__dict__,
-        "human_relevance": "not_relevant",
-        "reviewed_at": datetime(2025, 1, 1, tzinfo=UTC),
-    })
+def test_previous_reviewed_item_walks_back_through_v2_history():
+    newest = _reviewed(
+        _item(1, "candidate", "eng_or_unknown"),
+        coercion="yes",
+        scope="uncertain",
+        relevance="uncertain",
+        reviewed_at=datetime(2025, 1, 3, tzinfo=UTC),
+    )
+    middle = _reviewed(
+        _item(2, "candidate", "eng_or_unknown"),
+        coercion="yes",
+        scope="yes",
+        relevance="relevant",
+        reviewed_at=datetime(2025, 1, 2, tzinfo=UTC),
+    )
+    oldest = _reviewed(
+        _item(3, "candidate", "eng_or_unknown"),
+        coercion="yes",
+        scope="no",
+        relevance="not_relevant",
+        reviewed_at=datetime(2025, 1, 1, tzinfo=UTC),
+    )
     items = (oldest, newest, middle)
 
     assert previous_reviewed_item(items).candidate_document_id == "doc-1"

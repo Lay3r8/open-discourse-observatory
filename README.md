@@ -160,4 +160,4 @@ uv run odo review \
   --target 150
 ```
 
-The review server is local-only (`127.0.0.1`). Candidate/control status, discovery token and ideological information are intentionally hidden while coding.
+The review server is local-only (`127.0.0.1`). Candidate/control status, discovery token and ideological information are intentionally hidden while coding. Review v2 separates **coercion** from **expressive political/ideological scope**; the final relevance label is derived automatically from those two axes.

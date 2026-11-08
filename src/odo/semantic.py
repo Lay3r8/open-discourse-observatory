@@ -449,10 +449,29 @@ def review_stats(settings: Settings, sample_run_id: str) -> dict[str, object]:
         counts = conn.execute(
             """
             select
-                count(*) filter (where human_relevance is not null) as reviewed,
-                count(*) filter (where human_relevance = 'relevant') as relevant,
-                count(*) filter (where human_relevance = 'not_relevant') as not_relevant,
-                count(*) filter (where human_relevance = 'uncertain') as uncertain
+                count(*) filter (
+                    where review_schema_version = 'semantic-review-v2'
+                ) as reviewed,
+                count(*) filter (
+                    where review_schema_version = 'semantic-review-v2'
+                      and coercion_assessment = 'yes'
+                ) as coercion_yes,
+                count(*) filter (
+                    where review_schema_version = 'semantic-review-v2'
+                      and human_relevance = 'relevant'
+                ) as relevant,
+                count(*) filter (
+                    where review_schema_version = 'semantic-review-v2'
+                      and human_relevance = 'not_relevant'
+                ) as not_relevant,
+                count(*) filter (
+                    where review_schema_version = 'semantic-review-v2'
+                      and human_relevance = 'uncertain'
+                ) as uncertain,
+                count(*) filter (
+                    where human_relevance is not null
+                      and review_schema_version is distinct from 'semantic-review-v2'
+                ) as legacy_reviewed
             from staging.semantic_gold_label
             where sample_run_id = %s
             """,
@@ -467,7 +486,9 @@ def review_stats(settings: Settings, sample_run_id: str) -> dict[str, object]:
         "population_counts": run[3],
         "sample_counts": run[4],
         "reviewed": int(counts[0]),
-        "relevant": int(counts[1]),
-        "not_relevant": int(counts[2]),
-        "uncertain": int(counts[3]),
+        "coercion_yes": int(counts[1]),
+        "relevant": int(counts[2]),
+        "not_relevant": int(counts[3]),
+        "uncertain": int(counts[4]),
+        "legacy_reviewed": int(counts[5]),
     }

@@ -4,8 +4,8 @@ AI is part of the analysis pipeline, but it is not an autonomous research adjudi
 
 ## Planned stages
 
-1. **Semantic relevance**  
-   Decide whether a discovered document plausibly concerns pressure, sanction, exclusion, obstruction, threat or violence tied to political/ideological expression. Output must include a reason code, confidence and evidence text.
+1. **Semantic relevance — two axes**  
+   Predict coercion first, then expressive political/ideological scope separately. The final relevance label is derived from those two predictions. Each axis must include confidence and evidence.
 
 2. **Structured extraction**  
    Extract candidate event date, country, initiator, target, action types, institutional role, trigger and consequences. Each field must retain provenance.

@@ -56,3 +56,15 @@ def test_review_ui_audit_migration_tracks_label_changes():
     assert "previous_relevance" in migration
     assert "new_relevance" in migration
     assert "undone_at" in migration
+
+
+
+def test_semantic_review_v2_migration_adds_two_axis_coding():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "007_semantic_review_v2.sql"
+    ).read_text()
+    assert "coercion_assessment" in migration
+    assert "expressive_scope_assessment" in migration
+    assert "review_schema_version" in migration
+    assert "previous_coercion_assessment" in migration
+    assert "new_expressive_scope_assessment" in migration

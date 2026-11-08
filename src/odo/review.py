@@ -8,18 +8,29 @@ from typing import Iterable
 from odo.config import Settings
 from odo.db import connection
 
+REVIEW_SCHEMA_VERSION = "semantic-review-v2"
 VALID_LABELS = {"relevant", "not_relevant", "uncertain"}
+VALID_COERCION = {"yes", "no", "uncertain"}
+VALID_SCOPE = {"yes", "no", "uncertain", "not_applicable"}
 
-NON_RELEVANT_REASONS: tuple[tuple[str, str], ...] = (
+NO_COERCION_REASONS: tuple[tuple[str, str], ...] = (
     ("political_noncoercive", "Politique, mais non coercitif"),
     ("weather_or_safety", "Météo / sécurité"),
-    ("ordinary_crime", "Crime ordinaire"),
+    ("operational_or_technical", "Opérationnel / technique"),
+    ("reporting_or_background_only", "Contexte / information seulement"),
+    ("no_identifiable_coercive_action", "Aucune action coercitive identifiable"),
+    ("other_no_coercion", "Autre absence de coercition"),
+)
+
+OUT_OF_SCOPE_REASONS: tuple[tuple[str, str], ...] = (
+    ("state_policy_pressure", "Pression sur État / politique publique"),
+    ("violence_without_expression_target", "Violence sans cible d’expression politique"),
+    ("commercial_or_nonpolitical_hr", "Commercial / RH non politique"),
     ("sport_or_entertainment", "Sport / divertissement"),
     ("routine_regulation", "Réglementation courante"),
-    ("commercial_or_nonpolitical_hr", "Commercial / RH non politique"),
-    ("infrastructure_or_transport", "Transport / infrastructure"),
+    ("identity_or_conduct_not_expression", "Identité / conduite, pas expression politique"),
     ("nonpolitical_legal_case", "Affaire juridique non politique"),
-    ("other_nonpolitical", "Autre non politique"),
+    ("other_out_of_scope", "Autre coercition hors périmètre"),
 )
 
 
@@ -33,12 +44,24 @@ class ReviewItem:
     canonical_url: str
     sample_kind: str
     language_bucket: str
+    coercion_assessment: str | None
+    expressive_scope_assessment: str | None
     human_relevance: str | None
     reason_code: str | None
     evidence_text: str | None
     notes: str | None
+    review_schema_version: str | None
     reviewer_id: str | None
     reviewed_at: object | None
+
+    @property
+    def is_current_review(self) -> bool:
+        return (
+            self.review_schema_version == REVIEW_SCHEMA_VERSION
+            and self.coercion_assessment in VALID_COERCION
+            and self.expressive_scope_assessment in VALID_SCOPE
+            and self.human_relevance in VALID_LABELS
+        )
 
 
 @dataclass(frozen=True)
@@ -50,11 +73,36 @@ class ReviewQueue:
 
     @property
     def reviewed(self) -> int:
-        return sum(item.human_relevance is not None for item in self.items)
+        return sum(item.is_current_review for item in self.items)
 
     @property
     def remaining(self) -> int:
         return self.target - self.reviewed
+
+
+def derive_relevance(coercion: str, scope: str) -> str:
+    if coercion not in VALID_COERCION:
+        raise ValueError(f"invalid coercion assessment: {coercion}")
+    if scope not in VALID_SCOPE:
+        raise ValueError(f"invalid scope assessment: {scope}")
+
+    if coercion == "no":
+        if scope != "not_applicable":
+            raise ValueError("scope must be not_applicable when coercion is no")
+        return "not_relevant"
+
+    if coercion == "uncertain":
+        if scope != "not_applicable":
+            raise ValueError("scope must be not_applicable when coercion is uncertain")
+        return "uncertain"
+
+    if scope == "yes":
+        return "relevant"
+    if scope == "no":
+        return "not_relevant"
+    if scope == "uncertain":
+        return "uncertain"
+    raise ValueError("scope cannot be not_applicable when coercion is yes")
 
 
 def _rank(seed: str, item_id: str) -> str:
@@ -70,14 +118,8 @@ def _largest_remainder_allocation(
         return {key: 0 for key in sizes}
 
     target = min(target, available)
-    raw = {
-        key: (target * size / available)
-        for key, size in sizes.items()
-    }
-    allocated = {
-        key: min(size, int(raw[key]))
-        for key, size in sizes.items()
-    }
+    raw = {key: target * size / available for key, size in sizes.items()}
+    allocated = {key: min(size, int(raw[key])) for key, size in sizes.items()}
     remaining = target - sum(allocated.values())
 
     order = sorted(
@@ -141,8 +183,6 @@ def _select_stratified_prefix(
             )
             selected.extend(ranked[: language_alloc[language]])
 
-    # Final order deliberately ignores sample_kind/language so the reviewer is blind
-    # to the source stratum while every prefix remains a deterministic sample.
     return tuple(
         sorted(
             selected,
@@ -183,10 +223,13 @@ def load_review_queue(
                 d.canonical_url,
                 g.sample_kind,
                 g.language_bucket,
+                g.coercion_assessment,
+                g.expressive_scope_assessment,
                 g.human_relevance,
                 g.reason_code,
                 g.evidence_text,
                 g.notes,
+                g.review_schema_version,
                 g.reviewer_id,
                 g.reviewed_at
             from staging.semantic_gold_label g
@@ -207,12 +250,15 @@ def load_review_queue(
             canonical_url=str(row[5] or ""),
             sample_kind=str(row[6]),
             language_bucket=str(row[7]),
-            human_relevance=row[8],
-            reason_code=row[9],
-            evidence_text=row[10],
-            notes=row[11],
-            reviewer_id=row[12],
-            reviewed_at=row[13],
+            coercion_assessment=row[8],
+            expressive_scope_assessment=row[9],
+            human_relevance=row[10],
+            reason_code=row[11],
+            evidence_text=row[12],
+            notes=row[13],
+            review_schema_version=row[14],
+            reviewer_id=row[15],
+            reviewed_at=row[16],
         )
         for row in rows
     ]
@@ -231,6 +277,165 @@ def load_review_queue(
     )
 
 
+def _insert_audit(
+    conn,
+    *,
+    run_id: str,
+    candidate_document_id: str,
+    previous,
+    new_relevance: str,
+    new_reason_code: str | None,
+    new_evidence_text: str | None,
+    new_notes: str | None,
+    new_reviewer_id: str,
+    new_coercion_assessment: str | None,
+    new_expressive_scope_assessment: str | None,
+    new_review_schema_version: str | None,
+) -> None:
+    conn.execute(
+        """
+        insert into staging.semantic_gold_label_audit(
+            sample_run_id,
+            candidate_document_id,
+            previous_relevance,
+            previous_reason_code,
+            previous_evidence_text,
+            previous_notes,
+            previous_reviewer_id,
+            previous_reviewed_at,
+            previous_coercion_assessment,
+            previous_expressive_scope_assessment,
+            previous_review_schema_version,
+            new_relevance,
+            new_reason_code,
+            new_evidence_text,
+            new_notes,
+            new_reviewer_id,
+            new_coercion_assessment,
+            new_expressive_scope_assessment,
+            new_review_schema_version
+        ) values (
+            %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,%s,%s,%s
+        )
+        """,
+        (
+            run_id,
+            candidate_document_id,
+            previous[0],
+            previous[1],
+            previous[2],
+            previous[3],
+            previous[4],
+            previous[5],
+            previous[6],
+            previous[7],
+            previous[8],
+            new_relevance,
+            new_reason_code,
+            new_evidence_text,
+            new_notes,
+            new_reviewer_id,
+            new_coercion_assessment,
+            new_expressive_scope_assessment,
+            new_review_schema_version,
+        ),
+    )
+
+
+def save_structured_review(
+    settings: Settings,
+    run_id: str,
+    candidate_document_id: str,
+    *,
+    coercion: str,
+    scope: str,
+    reviewer_id: str,
+    reason_code: str | None = None,
+    evidence_text: str | None = None,
+    notes: str | None = None,
+) -> str:
+    if not reviewer_id.strip():
+        raise ValueError("reviewer_id is required")
+
+    relevance = derive_relevance(coercion, scope)
+    reason_code = (reason_code or "").strip() or None
+    evidence_text = (evidence_text or "").strip() or None
+    notes = (notes or "").strip() or None
+
+    if relevance == "not_relevant" and not reason_code:
+        raise ValueError("reason_code is required for a non-relevant structured review")
+
+    with connection(settings) as conn, conn.transaction():
+        previous = conn.execute(
+            """
+            select
+                human_relevance,
+                reason_code,
+                evidence_text,
+                notes,
+                reviewer_id,
+                reviewed_at,
+                coercion_assessment,
+                expressive_scope_assessment,
+                review_schema_version
+            from staging.semantic_gold_label
+            where sample_run_id = %s
+              and candidate_document_id = %s
+            for update
+            """,
+            (run_id, candidate_document_id),
+        ).fetchone()
+        if previous is None:
+            raise KeyError("review item not found")
+
+        _insert_audit(
+            conn,
+            run_id=run_id,
+            candidate_document_id=candidate_document_id,
+            previous=previous,
+            new_relevance=relevance,
+            new_reason_code=reason_code,
+            new_evidence_text=evidence_text,
+            new_notes=notes,
+            new_reviewer_id=reviewer_id.strip(),
+            new_coercion_assessment=coercion,
+            new_expressive_scope_assessment=scope,
+            new_review_schema_version=REVIEW_SCHEMA_VERSION,
+        )
+
+        conn.execute(
+            """
+            update staging.semantic_gold_label
+            set coercion_assessment = %s,
+                expressive_scope_assessment = %s,
+                human_relevance = %s,
+                reason_code = %s,
+                evidence_text = %s,
+                notes = %s,
+                review_schema_version = %s,
+                reviewer_id = %s,
+                reviewed_at = now()
+            where sample_run_id = %s
+              and candidate_document_id = %s
+            """,
+            (
+                coercion,
+                scope,
+                relevance,
+                reason_code,
+                evidence_text,
+                notes,
+                REVIEW_SCHEMA_VERSION,
+                reviewer_id.strip(),
+                run_id,
+                candidate_document_id,
+            ),
+        )
+
+    return relevance
+
+
 def save_review(
     settings: Settings,
     run_id: str,
@@ -242,6 +447,7 @@ def save_review(
     evidence_text: str | None = None,
     notes: str | None = None,
 ) -> None:
+    """Legacy v1 CSV import path. Browser review uses save_structured_review."""
     if label not in VALID_LABELS:
         raise ValueError(f"invalid label: {label}")
     if not reviewer_id.strip():
@@ -257,7 +463,16 @@ def save_review(
     with connection(settings) as conn, conn.transaction():
         previous = conn.execute(
             """
-            select human_relevance, reason_code, evidence_text, notes, reviewer_id, reviewed_at
+            select
+                human_relevance,
+                reason_code,
+                evidence_text,
+                notes,
+                reviewer_id,
+                reviewed_at,
+                coercion_assessment,
+                expressive_scope_assessment,
+                review_schema_version
             from staging.semantic_gold_label
             where sample_run_id = %s
               and candidate_document_id = %s
@@ -268,48 +483,31 @@ def save_review(
         if previous is None:
             raise KeyError("review item not found")
 
-        conn.execute(
-            """
-            insert into staging.semantic_gold_label_audit(
-                sample_run_id,
-                candidate_document_id,
-                previous_relevance,
-                previous_reason_code,
-                previous_evidence_text,
-                previous_notes,
-                previous_reviewer_id,
-                previous_reviewed_at,
-                new_relevance,
-                new_reason_code,
-                new_evidence_text,
-                new_notes,
-                new_reviewer_id
-            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """,
-            (
-                run_id,
-                candidate_document_id,
-                previous[0],
-                previous[1],
-                previous[2],
-                previous[3],
-                previous[4],
-                previous[5],
-                label,
-                reason_code,
-                evidence_text,
-                notes,
-                reviewer_id.strip(),
-            ),
+        _insert_audit(
+            conn,
+            run_id=run_id,
+            candidate_document_id=candidate_document_id,
+            previous=previous,
+            new_relevance=label,
+            new_reason_code=reason_code,
+            new_evidence_text=evidence_text,
+            new_notes=notes,
+            new_reviewer_id=reviewer_id.strip(),
+            new_coercion_assessment=None,
+            new_expressive_scope_assessment=None,
+            new_review_schema_version="semantic-review-v1",
         )
 
         conn.execute(
             """
             update staging.semantic_gold_label
-            set human_relevance = %s,
+            set coercion_assessment = null,
+                expressive_scope_assessment = null,
+                human_relevance = %s,
                 reason_code = %s,
                 evidence_text = %s,
                 notes = %s,
+                review_schema_version = 'semantic-review-v1',
                 reviewer_id = %s,
                 reviewed_at = now()
             where sample_run_id = %s
@@ -344,7 +542,10 @@ def undo_last_review(
                 previous_evidence_text,
                 previous_notes,
                 previous_reviewer_id,
-                previous_reviewed_at
+                previous_reviewed_at,
+                previous_coercion_assessment,
+                previous_expressive_scope_assessment,
+                previous_review_schema_version
             from staging.semantic_gold_label_audit
             where sample_run_id = %s
               and new_reviewer_id = %s
@@ -366,7 +567,10 @@ def undo_last_review(
                 evidence_text = %s,
                 notes = %s,
                 reviewer_id = %s,
-                reviewed_at = %s
+                reviewed_at = %s,
+                coercion_assessment = %s,
+                expressive_scope_assessment = %s,
+                review_schema_version = %s
             where sample_run_id = %s
               and candidate_document_id = %s
             """,
@@ -377,6 +581,9 @@ def undo_last_review(
                 audit[5],
                 audit[6],
                 audit[7],
+                audit[8],
+                audit[9],
+                audit[10],
                 run_id,
                 audit[1],
             ),
@@ -399,10 +606,17 @@ def label_counts(queue: ReviewQueue) -> dict[str, int]:
         "uncertain": 0,
     }
     for item in queue.items:
-        if item.human_relevance in counts:
+        if item.is_current_review and item.human_relevance in counts:
             counts[item.human_relevance] += 1
     return counts
 
+
+def coercion_counts(queue: ReviewQueue) -> dict[str, int]:
+    counts = {"yes": 0, "no": 0, "uncertain": 0}
+    for item in queue.items:
+        if item.is_current_review and item.coercion_assessment in counts:
+            counts[item.coercion_assessment] += 1
+    return counts
 
 
 def previous_reviewed_item(
@@ -410,7 +624,7 @@ def previous_reviewed_item(
     current_document_id: str | None = None,
 ) -> ReviewItem | None:
     reviewed = sorted(
-        (item for item in items if item.reviewed_at is not None),
+        (item for item in items if item.is_current_review and item.reviewed_at is not None),
         key=lambda item: item.reviewed_at,
         reverse=True,
     )

@@ -1,71 +1,96 @@
-# Semantic review v1
+# Semantic review v2
 
-Semantic Analysis V1 starts with a human-labelled gold set. No model is called at this stage.
+Semantic Analysis starts with a human-labelled gold set. No model decides corpus membership at this stage.
 
-## Objective
+## Two-axis decision
 
-The first semantic decision is deliberately independent of ideology:
+The review no longer collapses two different questions into a single judgment.
 
-> Does the source plausibly describe pressure, sanction, exclusion, obstruction, threat or violence tied to political or ideological expression, affiliation, participation or viewpoint?
+### Axis 1 — coercion
 
-Only after relevance is established will a separate analysis pass propose actor/target/action fields and, later, ideological attribution.
+> Does the source describe an action that imposes or seeks to impose a cost, restriction, sanction, exclusion, obstruction, suppression, threat or violence?
 
-## Labels
+Values:
 
-`human_relevance` accepts:
-
-- `relevant`
-- `not_relevant`
+- `yes`
+- `no`
 - `uncertain`
 
-Suggested `reason_code` values for non-relevant cases:
+Criticism, disagreement or persuasion alone is not coercion.
 
-- `political_noncoercive` — political criticism, disagreement or persuasion without coercive action or threatened cost
+### Axis 2 — expressive political/ideological scope
+
+Asked only when coercion is `yes`:
+
+> Does the coercive action target the person/group because of its expression, opinion, affiliation or political/ideological activity?
+
+Values:
+
+- `yes`
+- `no`
+- `uncertain`
+
+For `coercion=no|uncertain`, the stored scope value is `not_applicable`.
+
+## Derived relevance
+
+`human_relevance` remains for compatibility and benchmarking, but it is derived from the two axes:
+
+| Coercion | Expressive scope | Derived relevance |
+| --- | --- | --- |
+| no | not_applicable | not_relevant |
+| uncertain | not_applicable | uncertain |
+| yes | yes | relevant |
+| yes | no | not_relevant |
+| yes | uncertain | uncertain |
+
+This prevents political-but-non-coercive speech from entering the corpus and also excludes coercion that targets something other than political/ideological expression.
+
+Examples:
+
+- political criticism with no threatened cost → `no / n/a`;
+- McDonald’s dismissal for workplace harassment → `yes / no`;
+- sports boycott intended to pressure a government policy → `yes / no`;
+- violence against random civilians with no expressive target → `yes / no`;
+- conference cancelled because of the speaker’s political views → `yes / yes`.
+
+## Reason codes
+
+When coercion is `no`, the UI offers reasons such as:
+
+- `political_noncoercive`
 - `weather_or_safety`
-- `ordinary_crime`
+- `operational_or_technical`
+- `reporting_or_background_only`
+- `no_identifiable_coercive_action`
+- `other_no_coercion`
+
+When coercion is `yes` but expressive scope is `no`, it offers:
+
+- `state_policy_pressure`
+- `violence_without_expression_target`
+- `commercial_or_nonpolitical_hr`
 - `sport_or_entertainment`
 - `routine_regulation`
-- `commercial_or_nonpolitical_hr`
-- `infrastructure_or_transport`
+- `identity_or_conduct_not_expression`
 - `nonpolitical_legal_case`
-- `other_nonpolitical`
+- `other_out_of_scope`
 
-For relevant/uncertain cases, use `evidence_text` to record the phrase or fact that made the decision possible.
+## Legacy labels
+
+Existing v1 annotations are preserved verbatim. They are not silently converted because a v1 `not_relevant` or `uncertain` label does not tell us which axis failed. The browser UI therefore asks the reviewer to recode those documents under v2. Progress counts only completed v2 annotations.
 
 ## Sampling
 
-The default sample is 500 documents:
+The existing 500-document sample is unchanged:
 
-- 70% discovery candidates
-- 30% negative controls
+- 70% discovery candidates;
+- 30% negative controls;
+- deterministic sampling;
+- language balancing across English/unknown, French and Dutch.
 
-Sampling is deterministic from a seed and language-balanced across English/unknown, French and Dutch where data exists. Negative controls are restricted to the languages the current discovery lexicon actually searches; this avoids diluting recall estimates with out-of-scope languages.
-
-Create a review file:
-
-```bash
-uv run odo semantic-sample \
-  --start 2025-01-01 \
-  --end 2025-01-08 \
-  --size 500
-```
-
-The CSV is written under `data/silver/semantic-review/semantic-review-v1/`. Fill only the review columns; do not modify IDs or source fields.
-
-Import completed labels:
-
-```bash
-uv run odo semantic-import \
-  data/silver/semantic-review/semantic-review-v1/<sample>.csv \
-  --reviewer simon
-```
-
-Inspect progress:
-
-```bash
-uv run odo semantic-stats --run-id <sample-run-id>
-```
+The recommended initial human target remains 150 v2-coded documents.
 
 ## AI boundary
 
-The gold set will be used to benchmark future semantic classifiers. Model results remain in `staging.ai_analysis` and are evaluated against `staging.semantic_gold_label`. No model output is promoted directly into `research.*`.
+Future AI models will predict the two axes separately. Model results remain in `staging.ai_analysis` and will be evaluated against these human v2 labels. Ideological attribution of actors remains a later, separate task.

@@ -49,3 +49,15 @@ Completed labels are stored immediately in PostgreSQL. Relaunching the UI with t
 `Revoir le dernier` opens the most recently reviewed document. Once a reviewed document is open, the same control becomes `Annoté précédent` and walks backward through earlier reviewed documents.
 
 This is navigation only. `Annuler dernière action` restores the database state before the last annotation action. It is backed by the audit table and can be pressed repeatedly to roll back multiple accidental actions, including two consecutive clicks on the same label.
+
+
+## Two-axis review v2
+
+The browser now asks two separate questions:
+
+1. whether the described action is coercive;
+2. only when coercion is present, whether it targets political/ideological expression, opinion, affiliation or activity.
+
+The final `relevant/not_relevant/uncertain` value is derived automatically. This avoids forcing the reviewer to compress cases such as workplace sanctions, terrorism without an expressive target, state-policy boycotts and non-coercive political criticism into one ambiguous button.
+
+Existing v1 decisions are preserved but do not count toward v2 progress until recoded.
