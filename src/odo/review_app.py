@@ -10,6 +10,7 @@ from odo.review import (
     ReviewItem,
     label_counts,
     load_review_queue,
+    previous_reviewed_item,
     save_review,
     undo_last_review,
 )
@@ -87,13 +88,6 @@ def _save(
     skipped.discard(item.candidate_document_id)
     _clear_document_state(item.candidate_document_id)
     st.rerun()
-
-
-def _latest_reviewed(items: tuple[ReviewItem, ...]) -> ReviewItem | None:
-    reviewed = [item for item in items if item.reviewed_at is not None]
-    if not reviewed:
-        return None
-    return max(reviewed, key=lambda item: item.reviewed_at)
 
 
 def _current_item(items: tuple[ReviewItem, ...]) -> ReviewItem | None:
@@ -288,18 +282,27 @@ if nav1.button("Passer", width="stretch"):
     st.session_state.pop("forced_document_id", None)
     st.rerun()
 
-previous = _latest_reviewed(queue.items)
+previous = previous_reviewed_item(
+    queue.items,
+    item.candidate_document_id if item.human_relevance else None,
+)
+previous_label = "← Annoté précédent" if item.human_relevance else "Revoir le dernier"
 if nav2.button(
-    "Revoir le dernier",
+    previous_label,
     disabled=previous is None,
     width="stretch",
+    help="Navigue vers le document annoté précédent sans modifier les labels.",
 ):
     if previous:
         st.session_state["forced_document_id"] = previous.candidate_document_id
         st.session_state.pop("pending_non_relevant", None)
         st.rerun()
 
-if nav3.button("Annuler dernière", width="stretch"):
+if nav3.button(
+    "Annuler dernière action",
+    width="stretch",
+    help="Restaure l'état avant le dernier clic d'annotation. Peut être utilisé plusieurs fois.",
+):
     restored = undo_last_review(
         SETTINGS,
         RUN_ID,
@@ -310,6 +313,11 @@ if nav3.button("Annuler dernière", width="stretch"):
         st.session_state["last_feedback"] = "Dernière décision annulée."
         st.rerun()
     st.info("Aucune décision à annuler.")
+
+st.caption(
+    "« Annoté précédent » navigue dans les documents déjà codés. "
+    "« Annuler dernière action » remonte l'historique des clics et peut être utilisé plusieurs fois."
+)
 
 skipped_count = len(st.session_state.get("skipped_ids", set()))
 if skipped_count:

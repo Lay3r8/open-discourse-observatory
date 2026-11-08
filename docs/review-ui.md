@@ -42,3 +42,10 @@ For the initial AI benchmark, 100–150 independently human-reviewed documents a
 ## Resume behavior
 
 Completed labels are stored immediately in PostgreSQL. Relaunching the UI with the same run ID and target rebuilds the same deterministic review queue and resumes at the first unreviewed document. Therefore, if the browser/app is closed while viewing an unreviewed article, that article is normally shown again on restart. Session-only `Passer` choices are intentionally not persisted, so skipped documents may reappear after a restart.
+
+
+## Navigation vs undo
+
+`Revoir le dernier` opens the most recently reviewed document. Once a reviewed document is open, the same control becomes `Annoté précédent` and walks backward through earlier reviewed documents.
+
+This is navigation only. `Annuler dernière action` restores the database state before the last annotation action. It is backed by the audit table and can be pressed repeatedly to roll back multiple accidental actions, including two consecutive clicks on the same label.

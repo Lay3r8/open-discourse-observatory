@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from odo.review import (
     ReviewItem,
     _largest_remainder_allocation,
     _select_stratified_prefix,
+    previous_reviewed_item,
 )
 
 
@@ -55,3 +56,32 @@ def test_review_prefix_preserves_candidate_negative_mix_and_is_deterministic():
     assert sum(x.sample_kind == "candidate" for x in first) == 105
     assert sum(x.sample_kind == "negative_control" for x in first) == 45
     assert {x.language_bucket for x in first} == {"eng_or_unknown", "fra", "nld"}
+
+
+
+def test_previous_reviewed_item_walks_back_through_history():
+    newest = _item(1, "candidate", "eng_or_unknown")
+    middle = _item(2, "candidate", "eng_or_unknown")
+    oldest = _item(3, "candidate", "eng_or_unknown")
+
+    newest = ReviewItem(**{
+        **newest.__dict__,
+        "human_relevance": "uncertain",
+        "reviewed_at": datetime(2025, 1, 3, tzinfo=UTC),
+    })
+    middle = ReviewItem(**{
+        **middle.__dict__,
+        "human_relevance": "relevant",
+        "reviewed_at": datetime(2025, 1, 2, tzinfo=UTC),
+    })
+    oldest = ReviewItem(**{
+        **oldest.__dict__,
+        "human_relevance": "not_relevant",
+        "reviewed_at": datetime(2025, 1, 1, tzinfo=UTC),
+    })
+    items = (oldest, newest, middle)
+
+    assert previous_reviewed_item(items).candidate_document_id == "doc-1"
+    assert previous_reviewed_item(items, "doc-1").candidate_document_id == "doc-2"
+    assert previous_reviewed_item(items, "doc-2").candidate_document_id == "doc-3"
+    assert previous_reviewed_item(items, "doc-3") is None

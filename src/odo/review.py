@@ -402,3 +402,27 @@ def label_counts(queue: ReviewQueue) -> dict[str, int]:
         if item.human_relevance in counts:
             counts[item.human_relevance] += 1
     return counts
+
+
+
+def previous_reviewed_item(
+    items: tuple[ReviewItem, ...],
+    current_document_id: str | None = None,
+) -> ReviewItem | None:
+    reviewed = sorted(
+        (item for item in items if item.reviewed_at is not None),
+        key=lambda item: item.reviewed_at,
+        reverse=True,
+    )
+    if not reviewed:
+        return None
+
+    if current_document_id is None:
+        return reviewed[0]
+
+    for index, item in enumerate(reviewed):
+        if item.candidate_document_id == current_document_id:
+            next_index = index + 1
+            return reviewed[next_index] if next_index < len(reviewed) else None
+
+    return reviewed[0]
