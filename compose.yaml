@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-discourse}
+      POSTGRES_USER: ${POSTGRES_USER:-discourse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-discourse} -d ${POSTGRES_DB:-discourse}"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  etl:
+    build:
+      context: .
+      dockerfile: docker/etl/Dockerfile
+    environment:
+      POSTGRES_HOST: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-discourse}:${POSTGRES_PASSWORD:-change-me-local-only}@postgres:5432/${POSTGRES_DB:-discourse}
+      ODO_DATA_DIR: /app/data
+    volumes:
+      - .:/app
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sleep", "infinity"]
+
+  adminer:
+    image: adminer:latest
+    profiles: ["tools"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
