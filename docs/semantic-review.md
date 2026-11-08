@@ -61,9 +61,11 @@ When coercion is `no`, the UI offers reasons such as:
 - `political_noncoercive`
 - `weather_or_safety`
 - `operational_or_technical`
-- `reporting_or_background_only`
-- `no_identifiable_coercive_action`
+- `unrelated_general_content` — article generaliste ou hors sujet, sans incident coercitif pertinent
+- `analysis_or_background_only` — analyse/contexte sur le theme, mais sans incident coercitif distinct a coder
 - `other_no_coercion`
+
+La distinction entre `unrelated_general_content` et `analysis_or_background_only` repose sur le contenu de l'article, pas sur le token lexical qui a declenche la decouverte. Le reviewer n'a pas besoin de connaitre ce token.
 
 When coercion is `yes` but expressive scope is `no`, it offers:
 

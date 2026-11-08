@@ -61,3 +61,13 @@ The browser now asks two separate questions:
 The final `relevant/not_relevant/uncertain` value is derived automatically. This avoids forcing the reviewer to compress cases such as workplace sanctions, terrorism without an expressive target, state-policy boycotts and non-coercive political criticism into one ambiguous button.
 
 Existing v1 decisions are preserved but do not count toward v2 progress until recoded.
+
+
+## No-coercion reason taxonomy
+
+The no-coercion reasons intentionally avoid asking the reviewer to infer why the lexical discovery engine matched a document.
+
+- `Sujet sans rapport / contenu general`: the article is simply outside the research topic (for example a CRE market outlook).
+- `Analyse / contexte sans incident distinct`: the article discusses censorship/coercion/political controversy in general or as background, but does not provide a distinct incident to code.
+
+The former `Aucune action coercitive identifiable` category was removed because, with discovery tokens blinded, it overlapped operationally with `Contexte / information seulement` and was not reliably codable.

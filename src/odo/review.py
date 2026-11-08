@@ -17,8 +17,8 @@ NO_COERCION_REASONS: tuple[tuple[str, str], ...] = (
     ("political_noncoercive", "Politique, mais non coercitif"),
     ("weather_or_safety", "Météo / sécurité"),
     ("operational_or_technical", "Opérationnel / technique"),
-    ("reporting_or_background_only", "Contexte / information seulement"),
-    ("no_identifiable_coercive_action", "Aucune action coercitive identifiable"),
+    ("unrelated_general_content", "Sujet sans rapport / contenu général"),
+    ("analysis_or_background_only", "Analyse / contexte sans incident distinct"),
     ("other_no_coercion", "Autre absence de coercition"),
 )
 
