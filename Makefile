@@ -4,7 +4,7 @@ UV ?= uv
 MISE ?= mise
 UVRUN ?= ./scripts/uv-run.sh
 
-.PHONY: setup doctor bootstrap up down adminer migrate import-pilot gdelt-sample test lint format db-check reset-db
+.PHONY: setup doctor bootstrap up down adminer migrate import-pilot gdelt-sample storage discover-dry discovery-stats test lint format db-check reset-db
 
 setup:
 	command -v $(MISE) >/dev/null 2>&1 || { echo "mise is required"; exit 127; }
@@ -35,6 +35,15 @@ import-pilot:
 
 gdelt-sample:
 	$(UVRUN) python -m odo.cli gdelt-file tests/fixtures/gdelt_sample.tsv --timestamp 20260101000000
+
+storage:
+	$(UVRUN) python -m odo.cli storage status
+
+discover-dry:
+	$(UVRUN) python -m odo.cli discover --start 2025-01-01 --end 2025-01-02
+
+discovery-stats:
+	$(UVRUN) python -m odo.cli discovery-stats --start 2025-01-01 --end 2025-01-02
 
 test:
 	$(UVRUN) pytest -q

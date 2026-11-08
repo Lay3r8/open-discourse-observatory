@@ -14,3 +14,13 @@ def test_analytics_exposes_powerbi_views():
     assert "analytics.fact_incidents" in migration
     assert "analytics.country_group_bridge" in migration
     assert "analytics.incident_action_flags" in migration
+
+
+def test_discovery_migration_defines_ai_staging_boundary():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "003_discovery.sql"
+    ).read_text()
+    assert "staging.discovery_batch" in migration
+    assert "staging.candidate_document" in migration
+    assert "staging.ai_analysis" in migration
+    assert "analytics.discovery_batches" in migration

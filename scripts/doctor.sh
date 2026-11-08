@@ -52,6 +52,23 @@ else
   status=1
 fi
 
+printf "gcloud (optional for discovery): "
+if command -v gcloud >/dev/null 2>&1; then
+  project="$(gcloud config get-value project 2>/dev/null || true)"
+  if [ -n "$project" ] && [ "$project" != "(unset)" ]; then
+    echo "project=$project"
+    if gcloud auth application-default print-access-token >/dev/null 2>&1; then
+      echo "ADC: available"
+    else
+      echo "ADC: missing (run: gcloud auth application-default login)"
+    fi
+  else
+    echo "installed, project unset"
+  fi
+else
+  echo "not installed (only required for GDELT BigQuery discovery)"
+fi
+
 if [ -f .env ]; then
   if grep -Eq '^DATABASE_URL=.*@postgres:' .env; then
     echo ".env: legacy container hostname detected (DATABASE_URL must use localhost for host-side uv)"

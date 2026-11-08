@@ -14,6 +14,7 @@ The initial pilot covers France, Belgium, the United Kingdom, the United States 
 
 - PostgreSQL 18 for the canonical research database and Power BI serving layer.
 - DuckDB + Parquet for large local analytical datasets.
+- BigQuery for remote GDELT scans with mandatory dry-runs and per-query byte ceilings.
 - Python 3.13 pinned by `mise`; `uv` manages the project environment and dependencies.
 - PostgreSQL runs through a Compose-compatible container engine (Docker Compose or Podman Compose).
 - Power BI connects to the `analytics` schema.
@@ -72,6 +73,9 @@ make adminer            # start optional Adminer profile
 make migrate            # apply SQL migrations via uv
 make import-pilot       # import pilot CSV files via uv
 make gdelt-sample       # parse the bundled GDELT sample into bronze Parquet
+make storage            # show ODO/WSL/Windows-host storage guardrails
+make discover-dry       # dry-run the calibrated 2025-01-01 GKG discovery query
+make discovery-stats    # summarize locally materialized discovery batches
 make test               # run unit tests via uv
 make lint               # ruff checks via uv
 make format             # ruff format via uv
@@ -88,7 +92,7 @@ make db-check           # show canonical row counts via uv
 - Changes to methodology are versioned in Git before results are recomputed.
 - Pilot counts must not be interpreted as population prevalence.
 
-See [AGENTS.md](AGENTS.md) and [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md).
+See [AGENTS.md](AGENTS.md), [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md), [docs/discovery.md](docs/discovery.md) and [docs/ai-analysis.md](docs/ai-analysis.md).
 
 ## Power BI
 
@@ -102,3 +106,32 @@ Power BI should connect to PostgreSQL and consume only the `analytics` schema. T
 - `analytics.incident_action_flags`
 
 See [docs/powerbi/model.md](docs/powerbi/model.md).
+
+
+## Big-data discovery
+
+Authenticate locally with Google Application Default Credentials before querying GDELT:
+
+```bash
+gcloud auth application-default login
+gcloud auth application-default set-quota-project "$(gcloud config get-value project)"
+```
+
+The default discovery command is a **dry-run**:
+
+```bash
+uv run odo discover --start 2025-01-01 --end 2025-01-02
+```
+
+Only `--execute` runs BigQuery and writes Parquet/staging rows:
+
+```bash
+make migrate
+uv run odo storage status
+uv run odo discover --start 2025-01-01 --end 2025-01-02 --execute
+uv run odo discovery-stats --start 2025-01-01 --end 2025-01-02
+```
+
+The project defaults to a 200 GiB local budget, warning at 150 GiB and blocking new ingestion at 170 GiB. Under WSL it also checks the configured Windows host drive and blocks when host free space reaches the configured stop threshold.
+
+Discovery is intentionally ideology-neutral. It finds action signals first; later semantic/AI stages assess relevance, clustering and structured facts. AI output is stored in staging and cannot promote records into the canonical research schema.

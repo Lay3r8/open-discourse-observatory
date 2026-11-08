@@ -12,6 +12,9 @@
 8. Every coding decision that can affect an ideological comparison must be explainable and sourceable.
 9. Never overwrite raw downloaded data. Derive bronze/silver/gold outputs from it.
 10. Pilot data is a fixture for pipeline validation, not an estimate of real-world prevalence.
+11. BigQuery discovery must dry-run before execution and must set a maximum bytes billed ceiling.
+12. AI relevance and ideological attribution are separate stages; do not condition discovery/relevance on the desired left/right comparison.
+13. Store AI model/prompt/schema versions and raw structured output in staging. AI never writes directly to `research.*`.
 
 ## Development
 
@@ -19,6 +22,7 @@
 - `uv` manages the local virtual environment and dependency installation.
 - PostgreSQL 18.
 - DuckDB and Parquet for bulk analytics.
+- BigQuery client library for remote GDELT discovery; never remove the dry-run/cost ceiling guardrails.
 - Polars for dataframe transformations where useful.
 - `psycopg` for PostgreSQL access.
 - `pytest` for tests.
