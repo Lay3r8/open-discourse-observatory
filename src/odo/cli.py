@@ -10,6 +10,7 @@ from odo.discovery import QueryEstimate, discover_range, discovery_stats
 from odo.gdelt import download_export, extract_zip, to_parquet
 from odo.import_pilot import import_pilot
 from odo.migrations import migrate
+from odo.review_server import launch_review_ui
 from odo.semantic import create_review_sample, import_review_labels, review_stats
 from odo.storage import GIB, collect_storage_status, render_storage_status
 
@@ -60,6 +61,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     semantic_stats = sub.add_parser("semantic-stats")
     semantic_stats.add_argument("--run-id", required=True)
+
+    review = sub.add_parser("review")
+    review.add_argument("--run-id", required=True)
+    review.add_argument("--reviewer", required=True)
+    review.add_argument("--target", type=int, default=150)
+    review.add_argument("--port", type=int, default=8501)
+    review.add_argument("--no-browser", action="store_true")
 
     gdelt_download = sub.add_parser("gdelt-download")
     gdelt_download.add_argument("timestamp", help="GDELT v2 timestamp, e.g. 20260101000000")
@@ -184,6 +192,15 @@ def main(argv: list[str] | None = None) -> int:
         for key, value in stats.items():
             print(f"{key}={value}")
         return 0
+
+    if args.command == "review":
+        return launch_review_ui(
+            run_id=args.run_id,
+            reviewer_id=args.reviewer,
+            target=args.target,
+            port=args.port,
+            open_browser=not args.no_browser,
+        )
 
     if args.command == "gdelt-download":
         zip_path = download_export(args.timestamp, settings.data_dir / "raw")

@@ -45,3 +45,14 @@ def test_semantic_review_migration_defines_gold_set():
     assert "staging.semantic_review_run" in migration
     assert "staging.semantic_gold_label" in migration
     assert "analytics.semantic_gold_labels" in migration
+
+
+
+def test_review_ui_audit_migration_tracks_label_changes():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "006_review_ui_audit.sql"
+    ).read_text()
+    assert "staging.semantic_gold_label_audit" in migration
+    assert "previous_relevance" in migration
+    assert "new_relevance" in migration
+    assert "undone_at" in migration

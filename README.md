@@ -93,7 +93,7 @@ make db-check           # show canonical row counts via uv
 - Changes to methodology are versioned in Git before results are recomputed.
 - Pilot counts must not be interpreted as population prevalence.
 
-See [AGENTS.md](AGENTS.md), [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md), [docs/discovery.md](docs/discovery.md), [docs/semantic-review.md](docs/semantic-review.md) and [docs/ai-analysis.md](docs/ai-analysis.md).
+See [AGENTS.md](AGENTS.md), [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md), [docs/discovery.md](docs/discovery.md), [docs/semantic-review.md](docs/semantic-review.md), [docs/review-ui.md](docs/review-ui.md) and [docs/ai-analysis.md](docs/ai-analysis.md).
 
 ## Power BI
 
@@ -147,3 +147,17 @@ uv run odo semantic-sample --start 2025-01-01 --end 2025-01-08 --size 500
 ```
 
 The generated CSV is intentionally outside Git under `data/silver/semantic-review/`. Label it according to `docs/semantic-review.md`, import it with `odo semantic-import`, then use `odo semantic-stats` to track review progress. This gold set is the benchmark for later AI relevance analysis.
+
+
+### Browser-based annotation
+
+For the initial human gold-set review, use the local Streamlit UI instead of editing the CSV directly:
+
+```bash
+uv run odo review \
+  --run-id semantic-v1-2025-01-01-2025-01-08-bfe1d5267a05 \
+  --reviewer simon \
+  --target 150
+```
+
+The review server is local-only (`127.0.0.1`). Candidate/control status, discovery token and ideological information are intentionally hidden while coding.

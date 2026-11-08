@@ -12,6 +12,7 @@ dependencies = [
   "google-cloud-bigquery>=3.47,<4",
   "polars>=1.35,<2",
   "psycopg[binary]>=3.2,<4",
+  "streamlit>=1.67,<2",
 ]
 
 [project.optional-dependencies]
