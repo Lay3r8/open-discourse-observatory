@@ -7,7 +7,7 @@ import shutil
 import urllib.request
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 GDELT_EVENT_COLUMNS = [
@@ -46,7 +46,7 @@ def sha256_file(path: Path) -> str:
 
 def parse_export_tsv(path: Path) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
-    with path.open("r", encoding="utf-8", newline="") as handle:
+    with path.open(encoding="utf-8", newline="") as handle:
         reader = csv.reader(handle, delimiter="\t")
         for raw in reader:
             if not raw:
@@ -57,7 +57,7 @@ def parse_export_tsv(path: Path) -> list[dict[str, str]]:
 
 
 def download_export(timestamp: str, raw_root: Path) -> Path:
-    dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
     directory = raw_root / "gdelt" / "events" / f"date={dt:%Y-%m-%d}" / f"hour={dt:%H}"
     directory.mkdir(parents=True, exist_ok=True)
     zip_path = directory / f"{timestamp}.export.CSV.zip"
@@ -83,7 +83,7 @@ def extract_zip(zip_path: Path) -> Path:
 def to_parquet(tsv_path: Path, bronze_root: Path, timestamp: str) -> GdeltArtifact:
     import polars as pl
 
-    dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+    dt = datetime.strptime(timestamp, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
     target_dir = bronze_root / "gdelt" / "events" / f"date={dt:%Y-%m-%d}" / f"hour={dt:%H}"
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / f"{timestamp}.parquet"
@@ -103,7 +103,7 @@ def to_parquet(tsv_path: Path, bronze_root: Path, timestamp: str) -> GdeltArtifa
         "source_path": str(tsv_path),
         "source_sha256": sha256_file(tsv_path),
         "rows": frame.height,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
     }
     target.with_suffix(".manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return GdeltArtifact(tsv_path, manifest["source_sha256"], frame.height, target)

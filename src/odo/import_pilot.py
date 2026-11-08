@@ -94,7 +94,7 @@ def normalize_incident_row(row: dict[str, str]) -> dict[str, Any]:
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+    with path.open(encoding="utf-8-sig", newline="") as handle:
         return list(csv.DictReader(handle))
 
 
