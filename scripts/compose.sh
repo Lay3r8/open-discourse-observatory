@@ -2,6 +2,26 @@
 set -eu
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  if ! docker info >/dev/null 2>&1; then
+    cat >&2 <<'EOF'
+Docker is installed, but the current user cannot reach the Docker daemon.
+
+Check that Docker is running:
+  sudo systemctl enable --now docker
+
+Typical Linux permission fix:
+  sudo usermod -aG docker "$USER"
+
+Then log out and back in, or start a shell with the new group:
+  newgrp docker
+
+Verify with:
+  docker info
+
+Security note: membership in the docker group is effectively root-equivalent.
+EOF
+    exit 126
+  fi
   exec docker compose "$@"
 fi
 

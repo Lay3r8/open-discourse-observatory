@@ -33,6 +33,16 @@ fi
 printf "compose engine: "
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   docker compose version
+  if docker info >/dev/null 2>&1; then
+    echo "docker daemon: reachable"
+  else
+    echo "docker daemon: NOT reachable by current user"
+    echo "  Check that Docker is running and that your user can access /var/run/docker.sock."
+    echo "  Typical Linux fix: sudo usermod -aG docker \"\$USER\""
+    echo "  Then log out/in, or run: newgrp docker"
+    echo "  Note: membership in the docker group is effectively root-equivalent."
+    status=1
+  fi
 elif command -v podman >/dev/null 2>&1 && podman compose --help >/dev/null 2>&1; then
   echo "podman compose"
 elif command -v podman-compose >/dev/null 2>&1; then
