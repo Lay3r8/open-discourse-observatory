@@ -16,7 +16,7 @@ setup:
 doctor:
 	./scripts/doctor.sh
 
-bootstrap: setup up migrate import-pilot db-check
+bootstrap: setup doctor up migrate import-pilot db-check
 
 up:
 	$(COMPOSE) up -d postgres

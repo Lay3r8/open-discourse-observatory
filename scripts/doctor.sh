@@ -42,6 +42,16 @@ else
   status=1
 fi
 
-if [ -f .env ]; then echo ".env: present"; else echo ".env: missing (make setup creates it)"; fi
+if [ -f .env ]; then
+  if grep -Eq '^DATABASE_URL=.*@postgres:' .env; then
+    echo ".env: legacy container hostname detected (DATABASE_URL must use localhost for host-side uv)"
+    echo "      edit .env or replace it with: cp .env.example .env"
+    status=1
+  else
+    echo ".env: present"
+  fi
+else
+  echo ".env: missing (make setup creates it)"
+fi
 
 exit "$status"
