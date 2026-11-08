@@ -16,7 +16,9 @@ alter table staging.semantic_gold_label_audit
 create index if not exists idx_semantic_gold_label_review_schema
     on staging.semantic_gold_label(sample_run_id, review_schema_version);
 
-create or replace view analytics.semantic_gold_labels as
+drop view if exists analytics.semantic_gold_labels;
+
+create view analytics.semantic_gold_labels as
 select
     g.sample_run_id,
     g.candidate_document_id,
