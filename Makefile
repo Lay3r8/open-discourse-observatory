@@ -19,7 +19,7 @@ doctor:
 bootstrap: setup doctor up migrate import-pilot db-check
 
 up:
-	$(COMPOSE) up -d postgres
+	$(COMPOSE) up -d --wait --wait-timeout 60 postgres
 
 down:
 	$(COMPOSE) down
