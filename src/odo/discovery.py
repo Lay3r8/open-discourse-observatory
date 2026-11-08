@@ -296,7 +296,10 @@ def _bronze_rows(raw_rows: list[dict[str, object]], batch_date: date) -> list[di
 
 def _frame(rows: list[dict[str, object]], columns: list[str]) -> pl.DataFrame:
     if rows:
-        return pl.DataFrame(rows)
+        # BigQuery fields such as matched_token/language can be NULL for long runs
+        # before a concrete string appears. Polars samples only the first rows by
+        # default, which can incorrectly infer Null and fail later in the batch.
+        return pl.DataFrame(rows, infer_schema_length=None)
     return pl.DataFrame({column: [] for column in columns})
 
 

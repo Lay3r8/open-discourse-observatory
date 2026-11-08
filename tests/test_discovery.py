@@ -1,6 +1,6 @@
 from datetime import date
 
-from odo.discovery import canonicalize_url, normalize_title
+from odo.discovery import _frame, canonicalize_url, normalize_title
 
 
 def test_normalize_title_decodes_html_and_unicode():
@@ -24,3 +24,17 @@ def test_canonicalize_url_preserves_non_tracking_query():
 
 def test_date_object_is_stable_for_discovery_identity():
     assert date.fromisoformat("2025-01-01").isoformat() == "2025-01-01"
+
+
+
+def test_frame_infers_nullable_string_beyond_default_sample():
+    rows = [
+        {"title": f"row-{index}", "matched_token": None}
+        for index in range(150)
+    ]
+    rows.append({"title": "political cancellation", "matched_token": "annul"})
+
+    frame = _frame(rows, ["title", "matched_token"])
+
+    assert frame.height == 151
+    assert frame["matched_token"][-1] == "annul"
