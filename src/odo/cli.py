@@ -10,6 +10,7 @@ from odo.discovery import QueryEstimate, discover_range, discovery_stats
 from odo.gdelt import download_export, extract_zip, to_parquet
 from odo.import_pilot import import_pilot
 from odo.migrations import migrate
+from odo.semantic import create_review_sample, import_review_labels, review_stats
 from odo.storage import GIB, collect_storage_status, render_storage_status
 
 
@@ -44,6 +45,21 @@ def build_parser() -> argparse.ArgumentParser:
     stats = sub.add_parser("discovery-stats")
     stats.add_argument("--start", type=_date, required=True)
     stats.add_argument("--end", type=_date, required=True)
+
+    semantic_sample = sub.add_parser("semantic-sample")
+    semantic_sample.add_argument("--start", type=_date, required=True)
+    semantic_sample.add_argument("--end", type=_date, required=True)
+    semantic_sample.add_argument("--size", type=int, default=500)
+    semantic_sample.add_argument("--candidate-fraction", type=float, default=0.70)
+    semantic_sample.add_argument("--seed", default="odo-semantic-v1")
+    semantic_sample.add_argument("--output", type=Path)
+
+    semantic_import = sub.add_parser("semantic-import")
+    semantic_import.add_argument("path", type=Path)
+    semantic_import.add_argument("--reviewer", required=True)
+
+    semantic_stats = sub.add_parser("semantic-stats")
+    semantic_stats.add_argument("--run-id", required=True)
 
     gdelt_download = sub.add_parser("gdelt-download")
     gdelt_download.add_argument("timestamp", help="GDELT v2 timestamp, e.g. 20260101000000")
@@ -133,6 +149,40 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{key}={int(value) / GIB:.3f} GiB")
             else:
                 print(f"{key}={value}")
+        return 0
+
+    if args.command == "semantic-sample":
+        sample = create_review_sample(
+            settings,
+            args.start,
+            args.end,
+            sample_size=args.size,
+            candidate_fraction=args.candidate_fraction,
+            seed=args.seed,
+            output_path=args.output,
+        )
+        print(f"sample_run_id={sample.sample_run_id}")
+        print(f"output={sample.output_path}")
+        print(f"sample_size={sample.sample_size}")
+        print(f"candidate_count={sample.candidate_count}")
+        print(f"negative_count={sample.negative_count}")
+        print(f"population_counts={sample.population_counts}")
+        print(f"sample_counts={sample.sample_counts}")
+        return 0
+
+    if args.command == "semantic-import":
+        result = import_review_labels(
+            settings,
+            args.path,
+            reviewer_id=args.reviewer,
+        )
+        print(result)
+        return 2 if result["invalid"] else 0
+
+    if args.command == "semantic-stats":
+        stats = review_stats(settings, args.run_id)
+        for key, value in stats.items():
+            print(f"{key}={value}")
         return 0
 
     if args.command == "gdelt-download":

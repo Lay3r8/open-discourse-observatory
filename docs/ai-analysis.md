@@ -30,6 +30,10 @@ AI is part of the analysis pipeline, but it is not an autonomous research adjudi
 - Run robustness checks excluding low-confidence AI-assisted fields.
 - Where practical, blind coders/models to outcome variables that are not needed for the current task.
 
+## Gold-set prerequisite
+
+Before enabling a live semantic model, build a manually reviewed benchmark with `odo semantic-sample`. The initial target is 500 documents with both discovery candidates and in-scope negative controls. Model precision/recall must be measured against these labels before large-scale automated use.
+
 ## Database boundary
 
-AI results are stored only in `staging.ai_analysis`. Human-validated research records live in `research.*`.
+Human benchmark labels live in `staging.semantic_gold_label`. AI results are stored only in `staging.ai_analysis`. Human-validated research records live in `research.*`.

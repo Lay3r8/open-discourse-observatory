@@ -76,6 +76,7 @@ make gdelt-sample       # parse the bundled GDELT sample into bronze Parquet
 make storage            # show ODO/WSL/Windows-host storage guardrails
 make discover-dry       # dry-run the calibrated 2025-01-01 GKG discovery query
 make discovery-stats    # summarize locally materialized discovery batches
+# semantic review commands are exposed through `uv run odo ...`
 make test               # run unit tests via uv
 make lint               # ruff checks via uv
 make format             # ruff format via uv
@@ -92,7 +93,7 @@ make db-check           # show canonical row counts via uv
 - Changes to methodology are versioned in Git before results are recomputed.
 - Pilot counts must not be interpreted as population prevalence.
 
-See [AGENTS.md](AGENTS.md), [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md), [docs/discovery.md](docs/discovery.md) and [docs/ai-analysis.md](docs/ai-analysis.md).
+See [AGENTS.md](AGENTS.md), [docs/methodology/protocol-v0.1.md](docs/methodology/protocol-v0.1.md), [docs/discovery.md](docs/discovery.md), [docs/semantic-review.md](docs/semantic-review.md) and [docs/ai-analysis.md](docs/ai-analysis.md).
 
 ## Power BI
 
@@ -135,3 +136,14 @@ uv run odo discovery-stats --start 2025-01-01 --end 2025-01-02
 The project defaults to a 200 GiB local budget, warning at 150 GiB and blocking new ingestion at 170 GiB. Under WSL it also checks the configured Windows host drive and blocks when host free space reaches the configured stop threshold.
 
 Discovery is intentionally ideology-neutral. It finds action signals first; later semantic/AI stages assess relevance, clustering and structured facts. AI output is stored in staging and cannot promote records into the canonical research schema.
+
+
+## Semantic review / gold set
+
+After a calibrated discovery window is materialized, create a deterministic human-review sample:
+
+```bash
+uv run odo semantic-sample --start 2025-01-01 --end 2025-01-08 --size 500
+```
+
+The generated CSV is intentionally outside Git under `data/silver/semantic-review/`. Label it according to `docs/semantic-review.md`, import it with `odo semantic-import`, then use `odo semantic-stats` to track review progress. This gold set is the benchmark for later AI relevance analysis.

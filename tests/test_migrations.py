@@ -35,3 +35,13 @@ def test_discovery_membership_migration_preserves_batch_history():
     assert "first_batch_id" in migration
     assert "first_sample_kind" in migration
     assert "first_matched_token" in migration
+
+
+
+def test_semantic_review_migration_defines_gold_set():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "005_semantic_review.sql"
+    ).read_text()
+    assert "staging.semantic_review_run" in migration
+    assert "staging.semantic_gold_label" in migration
+    assert "analytics.semantic_gold_labels" in migration
