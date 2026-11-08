@@ -201,8 +201,10 @@ with st.expander("Rappel du critère de pertinence"):
 obstruction, menace ou violence liée à une expression, position, affiliation,
 participation ou opinion politique/idéologique.
 
-**Non pertinent** : l’action est réelle mais n’est pas liée à ce type d’expression
-politique/idéologique.
+**Non pertinent** : le document peut être politique, mais il ne décrit pas une
+pression coercitive ni une action de sanction, exclusion, obstruction, menace
+ou violence entrant dans le périmètre de l’étude. Une critique, un désaccord ou
+une tentative de persuasion sans coût imposé ou menace de coût est non pertinente.
 
 **Incertain** : le titre et/ou la source ne permettent pas de trancher raisonnablement.
 

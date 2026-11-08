@@ -37,3 +37,8 @@ It does **not** ask who is left/right. Ideological attribution remains a later, 
 ## Review target
 
 For the initial AI benchmark, 100–150 independently human-reviewed documents are sufficient to start measuring model behavior. The rest of the 500-row sample remains available for later expansion and disagreement review.
+
+
+## Resume behavior
+
+Completed labels are stored immediately in PostgreSQL. Relaunching the UI with the same run ID and target rebuilds the same deterministic review queue and resumes at the first unreviewed document. Therefore, if the browser/app is closed while viewing an unreviewed article, that article is normally shown again on restart. Session-only `Passer` choices are intentionally not persisted, so skipped documents may reappear after a restart.

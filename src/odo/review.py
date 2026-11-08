@@ -11,6 +11,7 @@ from odo.db import connection
 VALID_LABELS = {"relevant", "not_relevant", "uncertain"}
 
 NON_RELEVANT_REASONS: tuple[tuple[str, str], ...] = (
+    ("political_noncoercive", "Politique, mais non coercitif"),
     ("weather_or_safety", "Météo / sécurité"),
     ("ordinary_crime", "Crime ordinaire"),
     ("sport_or_entertainment", "Sport / divertissement"),

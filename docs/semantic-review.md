@@ -20,6 +20,7 @@ Only after relevance is established will a separate analysis pass propose actor/
 
 Suggested `reason_code` values for non-relevant cases:
 
+- `political_noncoercive` — political criticism, disagreement or persuasion without coercive action or threatened cost
 - `weather_or_safety`
 - `ordinary_crime`
 - `sport_or_entertainment`
