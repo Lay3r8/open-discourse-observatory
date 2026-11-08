@@ -54,29 +54,11 @@ Examples:
 - violence against random civilians with no expressive target → `yes / no`;
 - conference cancelled because of the speaker’s political views → `yes / yes`.
 
-## Reason codes
+## Optional diagnostics
 
-When coercion is `no`, the UI offers reasons such as:
+The gold set requires only the two human axes. `reason_code`, `evidence_text` and `notes` remain in the schema for backward compatibility and optional diagnostics, but reason codes are no longer required by the browser review workflow.
 
-- `political_noncoercive`
-- `weather_or_safety`
-- `operational_or_technical`
-- `unrelated_general_content` — article generaliste ou hors sujet, sans incident coercitif pertinent
-- `analysis_or_background_only` — analyse/contexte sur le theme, mais sans incident coercitif distinct a coder
-- `other_no_coercion`
-
-La distinction entre `unrelated_general_content` et `analysis_or_background_only` repose sur le contenu de l'article, pas sur le token lexical qui a declenche la decouverte. Le reviewer n'a pas besoin de connaitre ce token.
-
-When coercion is `yes` but expressive scope is `no`, it offers:
-
-- `state_policy_pressure`
-- `violence_without_expression_target`
-- `commercial_or_nonpolitical_hr`
-- `sport_or_entertainment`
-- `routine_regulation`
-- `identity_or_conduct_not_expression`
-- `nonpolitical_legal_case`
-- `other_out_of_scope`
+This is deliberate: the benchmark should measure agreement on the scientific variables we actually need, not force reviewers to distinguish secondary categories such as weather, operational issues or generic background content. Those detailed diagnostics can be generated later by an AI stage or added manually when useful.
 
 ## Legacy labels
 

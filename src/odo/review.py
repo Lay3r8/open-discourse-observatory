@@ -363,9 +363,6 @@ def save_structured_review(
     evidence_text = (evidence_text or "").strip() or None
     notes = (notes or "").strip() or None
 
-    if relevance == "not_relevant" and not reason_code:
-        raise ValueError("reason_code is required for a non-relevant structured review")
-
     with connection(settings) as conn, conn.transaction():
         previous = conn.execute(
             """

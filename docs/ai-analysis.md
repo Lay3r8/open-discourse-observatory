@@ -32,7 +32,7 @@ AI is part of the analysis pipeline, but it is not an autonomous research adjudi
 
 ## Gold-set prerequisite
 
-Before enabling a live semantic model, build a manually reviewed benchmark with `odo semantic-sample`. The initial target is 500 documents with both discovery candidates and in-scope negative controls. Model precision/recall must be measured against these labels before large-scale automated use.
+Before enabling a live semantic model, build a manually reviewed benchmark with `odo semantic-sample`. The initial human target is 150 documents drawn from the 500-document sample. The mandatory gold labels are the coercion and expressive-scope axes only; detailed reason categories are optional diagnostics. Model precision/recall must be measured against these labels before large-scale automated use.
 
 ## Database boundary
 

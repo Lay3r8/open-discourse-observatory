@@ -6,8 +6,6 @@ import streamlit as st
 
 from odo.config import Settings
 from odo.review import (
-    NO_COERCION_REASONS,
-    OUT_OF_SCOPE_REASONS,
     ReviewItem,
     coercion_counts,
     label_counts,
@@ -61,7 +59,6 @@ SETTINGS = Settings.from_env()
 def _clear_draft() -> None:
     st.session_state.pop("draft_document_id", None)
     st.session_state.pop("draft_coercion", None)
-    st.session_state.pop("draft_scope", None)
 
 
 def _clear_document_state(document_id: str) -> None:
@@ -71,21 +68,15 @@ def _clear_document_state(document_id: str) -> None:
     _clear_draft()
 
 
-def _set_draft(item: ReviewItem, *, coercion: str, scope: str | None = None) -> None:
+def _set_coercion_draft(item: ReviewItem) -> None:
     st.session_state["draft_document_id"] = item.candidate_document_id
-    st.session_state["draft_coercion"] = coercion
-    if scope is None:
-        st.session_state.pop("draft_scope", None)
-    else:
-        st.session_state["draft_scope"] = scope
+    st.session_state["draft_coercion"] = "yes"
 
 
-def _draft(item: ReviewItem) -> tuple[str | None, str | None]:
-    if st.session_state.get("draft_document_id") != item.candidate_document_id:
-        return None, None
+def _has_coercion_draft(item: ReviewItem) -> bool:
     return (
-        st.session_state.get("draft_coercion"),
-        st.session_state.get("draft_scope"),
+        st.session_state.get("draft_document_id") == item.candidate_document_id
+        and st.session_state.get("draft_coercion") == "yes"
     )
 
 
@@ -94,7 +85,6 @@ def _save(
     *,
     coercion: str,
     scope: str,
-    reason_code: str | None = None,
 ) -> None:
     evidence = st.session_state.get(f"evidence:{item.candidate_document_id}", "")
     notes = st.session_state.get(f"notes:{item.candidate_document_id}", "")
@@ -105,7 +95,6 @@ def _save(
         coercion=coercion,
         scope=scope,
         reviewer_id=REVIEWER,
-        reason_code=reason_code,
         evidence_text=evidence,
         notes=notes,
     )
@@ -133,34 +122,6 @@ def _current_item(items: tuple[ReviewItem, ...]) -> ReviewItem | None:
         if not current.is_current_review and current.candidate_document_id not in skipped:
             return current
     return None
-
-
-def _reason_grid(
-    item: ReviewItem,
-    reasons: tuple[tuple[str, str], ...],
-    *,
-    coercion: str,
-    scope: str,
-) -> None:
-    for index in range(0, len(reasons), 2):
-        cols = st.columns(2)
-        for offset, col in enumerate(cols):
-            pos = index + offset
-            if pos >= len(reasons):
-                continue
-            reason_code, label = reasons[pos]
-            if col.button(
-                label,
-                key=f"reason:{coercion}:{scope}:{reason_code}:{item.candidate_document_id}",
-                width="stretch",
-                shortcut=str(pos + 1),
-            ):
-                _save(
-                    item,
-                    coercion=coercion,
-                    scope=scope,
-                    reason_code=reason_code,
-                )
 
 
 try:
@@ -299,7 +260,7 @@ with st.expander("Ajouter une justification ou une note (facultatif)"):
         "Élément probant / justification",
         value=item.evidence_text or "",
         key=f"evidence:{item.candidate_document_id}",
-        placeholder="Ex. licenciement explicite, menace de boycott, conférence annulée après pression…",
+        placeholder="Facultatif — utile surtout pour les cas difficiles.",
     )
     st.text_area(
         "Note personnelle",
@@ -308,43 +269,30 @@ with st.expander("Ajouter une justification ou une note (facultatif)"):
         placeholder="Facultatif",
     )
 
-draft_coercion, draft_scope = _draft(item)
-
-if draft_coercion is None:
+if not _has_coercion_draft(item):
     st.markdown("### 1 · Y a-t-il une action coercitive ?")
     st.caption("Raccourcis : 1 = oui · 2 = non · 3 = incertain · O = source")
     c1, c2, c3 = st.columns(3)
 
     if c1.button("Oui", type="primary", width="stretch", shortcut="1"):
-        _set_draft(item, coercion="yes")
+        _set_coercion_draft(item)
         st.rerun()
 
     if c2.button("Non", width="stretch", shortcut="2"):
-        _set_draft(item, coercion="no")
-        st.rerun()
+        _save(
+            item,
+            coercion="no",
+            scope="not_applicable",
+        )
 
     if c3.button("Incertain", width="stretch", shortcut="3"):
         _save(
             item,
             coercion="uncertain",
             scope="not_applicable",
-            reason_code="coercion_uncertain",
         )
 
-elif draft_coercion == "no":
-    st.markdown("### Pourquoi n’y a-t-il pas de coercition pertinente ?")
-    st.caption("Choisis la raison principale · raccourcis 1–6")
-    _reason_grid(
-        item,
-        NO_COERCION_REASONS,
-        coercion="no",
-        scope="not_applicable",
-    )
-    if st.button("← Revenir à la question 1", width="stretch"):
-        _clear_draft()
-        st.rerun()
-
-elif draft_coercion == "yes" and draft_scope is None:
+else:
     st.markdown(
         "### 2 · Cette coercition vise-t-elle une expression, opinion, affiliation "
         "ou activité politique/idéologique de la cible ?"
@@ -352,36 +300,22 @@ elif draft_coercion == "yes" and draft_scope is None:
     st.caption("Raccourcis : 1 = oui · 2 = non · 3 = incertain")
     c1, c2, c3 = st.columns(3)
 
-    if c1.button("Oui · dans le périmètre", type="primary", width="stretch", shortcut="1"):
+    if c1.button(
+        "Oui · dans le périmètre",
+        type="primary",
+        width="stretch",
+        shortcut="1",
+    ):
         _save(item, coercion="yes", scope="yes")
 
     if c2.button("Non · hors périmètre", width="stretch", shortcut="2"):
-        _set_draft(item, coercion="yes", scope="no")
-        st.rerun()
+        _save(item, coercion="yes", scope="no")
 
     if c3.button("Incertain", width="stretch", shortcut="3"):
-        _save(
-            item,
-            coercion="yes",
-            scope="uncertain",
-            reason_code="scope_uncertain",
-        )
+        _save(item, coercion="yes", scope="uncertain")
 
     if st.button("← Revenir à la question 1", width="stretch"):
         _clear_draft()
-        st.rerun()
-
-elif draft_coercion == "yes" and draft_scope == "no":
-    st.markdown("### Pourquoi cette coercition est-elle hors périmètre ?")
-    st.caption("Choisis la raison principale · raccourcis 1–8")
-    _reason_grid(
-        item,
-        OUT_OF_SCOPE_REASONS,
-        coercion="yes",
-        scope="no",
-    )
-    if st.button("← Revenir à la question 2", width="stretch"):
-        _set_draft(item, coercion="yes")
         st.rerun()
 
 st.divider()
@@ -429,8 +363,7 @@ if nav3.button(
     st.info("Aucune action à annuler.")
 
 st.caption(
-    "« Annoté précédent » navigue dans les décisions v2. "
-    "« Annuler dernière action » remonte réellement l’historique des annotations."
+    "Les deux axes constituent le gold set. Justification et notes sont facultatives."
 )
 
 skipped_count = len(st.session_state.get("skipped_ids", set()))

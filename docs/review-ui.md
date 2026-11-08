@@ -71,3 +71,15 @@ The no-coercion reasons intentionally avoid asking the reviewer to infer why the
 - `Analyse / contexte sans incident distinct`: the article discusses censorship/coercion/political controversy in general or as background, but does not provide a distinct incident to code.
 
 The former `Aucune action coercitive identifiable` category was removed because, with discovery tokens blinded, it overlapped operationally with `Contexte / information seulement` and was not reliably codable.
+
+
+## Simplified gold-set workflow
+
+The browser no longer requires a reason category after a `no` decision. The mandatory human task is limited to:
+
+1. coercion: yes/no/uncertain;
+2. if coercion=yes, expressive political/ideological scope: yes/no/uncertain.
+
+A no/uncertain coercion answer is saved immediately. A yes/no scope answer is also saved immediately. Evidence and notes remain optional.
+
+Existing reason codes remain stored for audit/backward compatibility, but they are not required for AI benchmarking.
