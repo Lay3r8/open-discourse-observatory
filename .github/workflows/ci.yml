@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: discourse
+          POSTGRES_USER: discourse
+          POSTGRES_PASSWORD: discourse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U discourse -d discourse"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://discourse:discourse@localhost:5432/discourse
+      ODO_DATA_DIR: ${{ github.workspace }}/data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install uv and project
+        run: |
+          python -m pip install uv==0.12.20
+          uv sync --extra dev
+      - name: Static sanity check
+        run: |
+          uv run ruff check src tests --select F
+          uv run python -m compileall -q src tests
+      - name: Unit tests
+        run: uv run pytest -q
+      - name: Validate compose
+        run: docker compose config -q
+      - name: Migrate and import pilot
+        run: |
+          uv run python -m odo.cli migrate
+          uv run python -m odo.cli import-pilot
+          uv run python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ['DATABASE_URL']) as conn:
+              incidents = conn.execute('select count(*) from research.incident').fetchone()[0]
+              sources = conn.execute('select count(*) from research.source').fetchone()[0]
+          assert incidents == 54, incidents
+          assert sources == 69, sources
+          PY

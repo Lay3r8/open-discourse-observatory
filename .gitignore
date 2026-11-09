@@ -1,0 +1,25 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Bulk datasets are reproducible/local and should not live in Git.
+data/raw/*
+!data/raw/.gitkeep
+data/bronze/*
+!data/bronze/.gitkeep
+data/silver/*
+!data/silver/.gitkeep
+data/gold/*
+!data/gold/.gitkeep
+
+# Local database / exports
+*.dump
+*.sql.gz
+.DS_Store

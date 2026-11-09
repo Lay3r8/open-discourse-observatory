@@ -1,0 +1,12 @@
+[metadata]
+version = "v1"
+description = "Historical discovery lexicon. English/Dutch word boundaries were accidentally double-escaped."
+
+[english]
+pattern = '\\b(cancelled|canceled|banned|disinvited|deplatformed|withdrawn|fired|dismissed|suspended|boycott|boycotted|threatened|attacked|disrupted|blocked|censored)\\b'
+
+[french]
+pattern = '(annul|d&#x[eE]9;programm|déprogramm|interdit|licenci|suspend|boycott|menac|agress|perturb|bloqu|censur)'
+
+[dutch]
+pattern = '\\b(geannuleerd|verboden|ontslagen|ontslag|geschorst|boycot|bedreigd|aangevallen|verstoord|geblokkeerd|gecensureerd)\\b'
