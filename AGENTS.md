@@ -16,6 +16,7 @@
 12. AI relevance and ideological attribution are separate stages; do not condition discovery/relevance on the desired left/right comparison.
 13. Store AI model/prompt/schema versions and raw structured output in staging. AI never writes directly to `research.*`.
 14. Human semantic review codes coercion and expressive political/ideological scope as separate axes. Final relevance is derived from those axes; do not collapse them back into one subjective judgment.
+15. The frozen pilot geography is France, Belgium, United Kingdom, United States and Canada. GKG location filtering is a discovery prefilter only; canonical incident country must be validated later.
 
 ## Development
 

@@ -68,3 +68,13 @@ def test_semantic_review_v2_migration_adds_two_axis_coding():
     assert "review_schema_version" in migration
     assert "previous_coercion_assessment" in migration
     assert "new_expressive_scope_assessment" in migration
+
+
+
+def test_geography_scope_migration_versions_discovery_and_semantic_runs():
+    migration = (
+        Path(__file__).parents[1] / "db" / "migrations" / "008_geography_scope.sql"
+    ).read_text()
+    assert "geography_scope_version" in migration
+    assert "target_country_codes" in migration
+    assert "query_version" in migration

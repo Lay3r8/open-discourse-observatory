@@ -78,3 +78,10 @@ The recommended initial human target remains 150 v2-coded documents.
 ## AI boundary
 
 Future AI models will predict the two axes separately. Model results remain in `staging.ai_analysis` and will be evaluated against these human v2 labels. Ideological attribution of actors remains a later, separate task.
+
+
+## Discovery scope dependency
+
+New semantic samples are drawn only from discovery `query_version=v2`, `lexicon_version=v2`, and geography scope `pilot-5-country-v1`. The earlier global v1 sample remains preserved for audit but should not be used as the pilot gold set.
+
+At document level, mark the source positive if it clearly documents at least one qualifying incident, even when the headline event is an arrest, prosecution or later consequence of that underlying incident.

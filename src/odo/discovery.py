@@ -19,11 +19,14 @@ from odo.config import Settings
 from odo.db import connection
 from odo.storage import GIB, ensure_ingestion_allowed
 
-QUERY_VERSION = "v1"
+QUERY_VERSION = "v2"
+GEOGRAPHY_SCOPE_VERSION = "pilot-5-country-v1"
+TARGET_COUNTRY_CODES = ("FR", "BE", "UK", "US", "CA")
+TARGET_COUNTRY_NAMES = ("France", "Belgium", "United Kingdom", "United States", "Canada")
+TARGET_COUNTRY_PATTERN = r"#(FR|BE|UK|US|CA)#"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DISCOVERY_ROOT = PROJECT_ROOT / "research" / "discovery" / QUERY_VERSION
-SQL_PATH = DISCOVERY_ROOT / "gkg_candidates.sql"
-LEXICON_PATH = DISCOVERY_ROOT / "lexicon-v2.toml"
+SQL_PATH = PROJECT_ROOT / "research" / "discovery" / QUERY_VERSION / "gkg_candidates.sql"
+LEXICON_PATH = PROJECT_ROOT / "research" / "discovery" / "v1" / "lexicon-v2.toml"
 
 TRACKING_QUERY_KEYS = {
     "fbclid",
@@ -180,6 +183,11 @@ def _query_parameters(
         bigquery.ScalarQueryParameter("french_pattern", "STRING", lexicon["french"]),
         bigquery.ScalarQueryParameter("dutch_pattern", "STRING", lexicon["dutch"]),
         bigquery.ScalarQueryParameter(
+            "target_country_pattern",
+            "STRING",
+            TARGET_COUNTRY_PATTERN,
+        ),
+        bigquery.ScalarQueryParameter(
             "negative_sample_modulus",
             "INT64",
             negative_sample_modulus,
@@ -330,13 +338,15 @@ def _persist_staging(
         conn.execute(
             """
             insert into staging.discovery_batch(
-                batch_id, source_system, query_version, lexicon_version, batch_date,
+                batch_id, source_system, query_version, lexicon_version,
+                geography_scope_version, target_country_codes, batch_date,
                 gcp_project_id, bigquery_location, query_bytes_processed,
                 query_bytes_billed, max_bytes_billed, candidate_rows,
                 negative_control_rows, unique_urls, unique_titles, raw_path,
                 bronze_path, manifest_path, status, completed_at
             ) values (
-                %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'complete',now()
+                %s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                'complete',now()
             )
             on conflict (batch_id) do update set
                 query_bytes_processed=excluded.query_bytes_processed,
@@ -356,6 +366,8 @@ def _persist_staging(
                 "gdelt-gkg",
                 manifest["query_version"],
                 manifest["lexicon_version"],
+                manifest["geography_scope_version"],
+                json.dumps(manifest["target_country_codes"]),
                 manifest["batch_date"],
                 manifest["gcp_project_id"],
                 manifest["bigquery_location"],
@@ -531,6 +543,9 @@ def execute_day(
         "source_system": "gdelt-gkg",
         "query_version": QUERY_VERSION,
         "lexicon_version": lexicon["version"],
+        "geography_scope_version": GEOGRAPHY_SCOPE_VERSION,
+        "target_country_codes": list(TARGET_COUNTRY_CODES),
+        "target_country_names": list(TARGET_COUNTRY_NAMES),
         "batch_date": batch_date.isoformat(),
         "gcp_project_id": bq_client.project,
         "bigquery_location": settings.bigquery_location,

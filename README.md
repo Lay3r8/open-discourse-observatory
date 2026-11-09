@@ -161,3 +161,8 @@ uv run odo review \
 ```
 
 The review server is local-only (`127.0.0.1`). Candidate/control status, discovery token and ideological information are intentionally hidden while coding. Review v2 separates **coercion** from **expressive political/ideological scope**; the final relevance label is derived automatically from those two axes.
+
+
+### Pilot geography
+
+Discovery v2 is scoped to France, Belgium, the United Kingdom, the United States and Canada using GDELT GKG location mentions as a coarse prefilter. This is not the canonical incident-country assignment; later semantic extraction/human validation owns that field. Global Discovery v1 batches remain preserved for audit.

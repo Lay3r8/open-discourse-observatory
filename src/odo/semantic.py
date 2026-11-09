@@ -13,7 +13,9 @@ from odo.config import Settings
 from odo.db import connection
 
 SCHEMA_VERSION = "semantic-review-v1"
+CURRENT_QUERY_VERSION = "v2"
 CURRENT_LEXICON_VERSION = "v2"
+CURRENT_GEOGRAPHY_SCOPE_VERSION = "pilot-5-country-v1"
 VALID_LABELS = {"relevant", "not_relevant", "uncertain"}
 LANGUAGE_BUCKETS = ("eng_or_unknown", "fra", "nld")
 
@@ -117,7 +119,9 @@ def _population_rows(
     settings: Settings,
     start: date,
     end: date,
+    query_version: str,
     lexicon_version: str,
+    geography_scope_version: str,
 ) -> list[ReviewDocument]:
     if end <= start:
         raise ValueError("end must be later than start")
@@ -137,7 +141,9 @@ def _population_rows(
           on b.batch_id = m.batch_id
         join staging.candidate_document d
           on d.candidate_document_id = m.candidate_document_id
-        where b.lexicon_version = %s
+        where b.query_version = %s
+          and b.lexicon_version = %s
+          and b.geography_scope_version = %s
           and b.batch_date >= %s
           and b.batch_date < %s
           and (
@@ -153,7 +159,16 @@ def _population_rows(
         order by d.candidate_document_id, b.batch_date desc
     """
     with connection(settings) as conn:
-        rows = conn.execute(sql, (lexicon_version, start, end)).fetchall()
+        rows = conn.execute(
+            sql,
+            (
+                query_version,
+                lexicon_version,
+                geography_scope_version,
+                start,
+                end,
+            ),
+        ).fetchall()
 
     return [
         ReviewDocument(
@@ -193,9 +208,11 @@ def _run_id(
     seed: str,
 ) -> str:
     digest = hashlib.sha256(
-        f"{start}|{end}|{sample_size}|{candidate_target}|{seed}|{CURRENT_LEXICON_VERSION}".encode(
-            "utf-8"
-        )
+        (
+            f"{start}|{end}|{sample_size}|{candidate_target}|{seed}|"
+            f"{CURRENT_QUERY_VERSION}|{CURRENT_LEXICON_VERSION}|"
+            f"{CURRENT_GEOGRAPHY_SCOPE_VERSION}"
+        ).encode("utf-8")
     ).hexdigest()[:12]
     return f"semantic-v1-{start.isoformat()}-{end.isoformat()}-{digest}"
 
@@ -219,7 +236,9 @@ def create_review_sample(
         settings,
         start,
         end,
+        CURRENT_QUERY_VERSION,
         CURRENT_LEXICON_VERSION,
+        CURRENT_GEOGRAPHY_SCOPE_VERSION,
     )
     candidates = [row for row in population if row.sample_kind == "candidate"]
     negatives = [row for row in population if row.sample_kind == "negative_control"]
@@ -281,16 +300,19 @@ def create_review_sample(
         conn.execute(
             """
             insert into staging.semantic_review_run(
-                sample_run_id, schema_version, lexicon_version, start_date, end_date,
+                sample_run_id, schema_version, query_version, lexicon_version,
+                geography_scope_version, start_date, end_date,
                 sample_size, candidate_target, negative_target, seed,
                 population_counts, sample_counts, output_path
-            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s)
+            ) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s)
             on conflict (sample_run_id) do nothing
             """,
             (
                 sample_run_id,
                 SCHEMA_VERSION,
+                CURRENT_QUERY_VERSION,
                 CURRENT_LEXICON_VERSION,
+                CURRENT_GEOGRAPHY_SCOPE_VERSION,
                 start,
                 end,
                 actual_size,

@@ -250,7 +250,11 @@ Exemples :
 - boycott d’une équipe pour faire pression sur une politique d’État → **oui**, puis **non** ;
 - conférence annulée à cause des opinions politiques de l’intervenant → **oui**, puis **oui**.
 
-Le statut candidat/contrôle, le token de découverte et toute attribution gauche/droite
+**Règle documentaire :** juge l’article comme source. S’il documente clairement au moins
+un incident qualifiant, code cet incident même si le titre porte surtout sur une arrestation,
+un procès ou les suites de l’affaire.
+
+Le statut candidat/contrôle, le token de découverte et toute attribution idéologique
 restent masqués.
         """
     )

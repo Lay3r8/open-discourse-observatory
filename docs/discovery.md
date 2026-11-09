@@ -1,4 +1,4 @@
-# Discovery pipeline v1
+# Discovery pipeline v2
 
 The discovery layer is deliberately high-recall and ideology-neutral.
 
@@ -59,3 +59,18 @@ The next analysis stage is semantic relevance and event clustering; it must not 
 ## Versioned batch membership
 
 A normalized candidate document can appear in more than one discovery batch as query or lexicon versions evolve. `staging.candidate_document` stores the document once (with first-seen metadata), while `staging.discovery_batch_document` stores batch-specific classification such as `sample_kind` and `matched_token`. This prevents a rerun from overwriting the audit history of an earlier batch.
+
+
+## Pilot geography scope
+
+Discovery query v2 applies a coarse GDELT-location prefilter for the frozen pilot countries:
+
+- France (`FR`)
+- Belgium (`BE`)
+- United Kingdom (`UK`)
+- United States (`US`)
+- Canada (`CA`)
+
+The filter uses country codes embedded in GKG `V2Locations`. This removes obvious global noise before candidate sampling, but it is not treated as authoritative incident geography: GKG locations are mentions in the article. Later semantic extraction and human validation must determine the actual incident country.
+
+The previous global query is preserved as query version `v1`; no old batch is overwritten.
